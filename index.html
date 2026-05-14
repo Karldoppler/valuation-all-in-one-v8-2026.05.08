@@ -1,0 +1,2338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통합 DCF & Breakeven 가치평가 모델 Pro</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Pretendard', 'sans-serif'] },
+                    colors: { primary: { 50:'#eff6ff',100:'#dbeafe',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8' } }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .transition-all-300 { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card { background: white; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.07); border: 1px solid #e2e8f0; padding: 1.5rem; margin-bottom: 1.5rem; transition: all 0.3s; }
+        .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); border-color: #cbd5e1; }
+        .input-group { margin-bottom: 1rem; }
+        .input-label { display: block; font-size:.875rem; font-weight:600; color:#334155; margin-bottom:.375rem; margin-left:.25rem; }
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        .input-field { width:100%; padding:.625rem 1rem; background:#f8fafc; border:1px solid #cbd5e1; border-radius:.75rem; color:#0f172a; font-size:.875rem; font-weight:500; outline:none; transition: all 0.3s; }
+        .input-field:focus { box-shadow: 0 0 0 2px #3b82f6; background:white; border-color:transparent; }
+        .input-readonly { background:#f1f5f9; color:#64748b; cursor:not-allowed; border-color:transparent; }
+        .input-unit { position:absolute; right:1rem; font-size:.75rem; color:#64748b; font-weight:700; pointer-events:none; }
+        .btn { font-weight:700; padding:.75rem 1.5rem; border-radius:.75rem; transition:all 0.3s; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+        .btn:active { transform: scale(.97); }
+        .btn-primary { background:#1e293b; color:white; }
+        .btn-primary:hover { background:#0f172a; box-shadow:0 4px 12px rgba(0,0,0,.2); }
+        .btn-primary:disabled { background:#94a3b8; cursor:not-allowed; }
+        .btn-secondary { background:white; color:#334155; border:1px solid #cbd5e1; }
+        .btn-secondary:hover { background:#f8fafc; color:#1e293b; }
+        .btn-sm { padding:.375rem .75rem; font-size:.75rem; border-radius:.5rem; }
+        .tab-nav { display:flex; gap:.25rem; background:#f1f5f9; padding:.25rem; border-radius:.75rem; margin-bottom:1.5rem; }
+        .tab-btn { flex:1; padding:.5rem; font-size:.875rem; font-weight:500; color:#64748b; border-radius:.5rem; transition:all 0.3s; }
+        .tab-btn.active { background:white; color:#1e293b; font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+        .custom-table th { background:#f8fafc; color:#475569; font-weight:700; text-transform:uppercase; font-size:.75rem; letter-spacing:.05em; padding:.75rem 1rem; text-align:left; border-bottom:1px solid #e2e8f0; }
+        .custom-table td { padding:.75rem 1rem; font-size:.875rem; color:#1e293b; border-bottom:1px solid #f1f5f9; }
+        .custom-table tr:last-child td { border-bottom:none; }
+        .custom-table tr:hover td { background:#f8fafc; }
+        .result-gradient { background:white; border:2px solid #1e293b; color:#1e293b; box-shadow:0 10px 25px rgba(0,0,0,.15); }
+        .theme-green .btn-primary { background:#047857; }
+        .theme-green .btn-primary:hover { background:#065f46; }
+        .theme-green .result-gradient { border-color: #059669; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+
+        /* ── 인쇄 / window.print() 스타일 ── */
+        @media print {
+            #selection-screen, #back-to-selection { display: none !important; }
+            #a3_printBtn { display: none !important; }
+            .card { box-shadow: none !important; break-inside: avoid; }
+            .btn { display: none !important; }
+            .print-text-value { font-weight:700; color:#0f172a; font-size:0.875rem; }
+            .print-text-readonly { font-weight:600; color:#475569; font-size:0.875rem; }
+            .print-radio-label { font-weight:600; color:#1e293b; font-size:0.875rem; }
+            .print-radio-label::before { content:'✓ '; color:#2563eb; }
+
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+<div id="main-container" class="container mx-auto p-4 md:p-6 lg:p-8 flex-grow max-w-7xl">
+
+    <!-- Selection Screen -->
+    <div id="selection-screen" class="flex flex-col items-center justify-center min-h-[80vh]">
+        <div class="text-center mb-12">
+            <span class="inline-block py-1 px-3 rounded-full bg-slate-100 text-slate-600 text-xs font-bold mb-4 tracking-wide border border-slate-200">FINANCIAL ANALYSIS TOOL</span>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">통합 가치평가 모델</h1>
+            <p class="text-lg text-slate-600 max-w-2xl mx-auto">목적에 맞는 기업 가치평가 모델을 선택하세요.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl px-4">
+            <div id="select-app1" class="group bg-white p-8 rounded-3xl shadow-lg border border-slate-200 cursor-pointer hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150"></div>
+                <div class="relative z-10">
+                    <div class="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center mb-6 text-indigo-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900 mb-2">DCF & 주가 온도</h2>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-4 h-16">단일 기업의 내재가치를 평가하거나, 현재 주가에 내포된 시장의 기대치(Implied Assumptions)를 역산합니다.</p>
+                    <span class="text-indigo-700 font-bold text-sm flex items-center">시작하기 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></span>
+                </div>
+            </div>
+            <div id="select-app2" class="group bg-white p-8 rounded-3xl shadow-lg border border-slate-200 cursor-pointer hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150"></div>
+                <div class="relative z-10">
+                    <div class="w-14 h-14 bg-teal-100 rounded-2xl flex items-center justify-center mb-6 text-teal-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900 mb-2">SOTP (부문별)</h2>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-4 h-16">여러 사업 부문을 가진 기업의 가치를 각 사업부(Segment)별로 상세히 분석하여 합산하는 Sum-of-the-Parts 모델입니다.</p>
+                    <span class="text-teal-700 font-bold text-sm flex items-center">시작하기 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></span>
+                </div>
+            </div>
+            <div id="select-app3" class="group bg-white p-8 rounded-3xl shadow-lg border border-slate-200 cursor-pointer hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150"></div>
+                <div class="relative z-10">
+                    <div class="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mb-6 text-emerald-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900 mb-2">다모다란 Breakeven</h2>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-4 h-16">시가총액과 목표 이익률을 기반으로 정당화 가능한 매출 규모(Breakeven Revenue)를 역산하는 모델입니다.</p>
+                    <span class="text-emerald-700 font-bold text-sm flex items-center">시작하기 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Wrapper -->
+    <div id="app-wrapper" class="hidden">
+        <div class="flex items-center justify-between mb-8">
+            <button id="back-to-selection" class="flex items-center text-slate-600 hover:text-slate-900 transition-colors font-bold">
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-300 flex items-center justify-center mr-2 shadow-sm text-slate-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                </div>
+                메인으로 돌아가기
+            </button>
+            <div class="flex items-center gap-3">
+                <div class="text-xs text-slate-400 font-mono">Ver 9.0 USD+KRW</div>
+            </div>
+        </div>
+        <div id="app-content"></div>
+    </div>
+</div>
+
+<!-- ============================================================
+     텔레그램 설정 모달 (전역)
+     ============================================================ -->
+
+<!-- 항상 보이는 고정 텔레그램 버튼 (우하단) -->
+<button id="tg-settings-btn" title="텔레그램 알림 설정"
+    style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:40;display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;background:white;border:1.5px solid #e2e8f0;border-radius:9999px;box-shadow:0 4px 16px rgba(0,0,0,0.12);cursor:pointer;font-size:0.8rem;font-weight:700;color:#475569;transition:all 0.2s;">
+    <svg style="width:1.1rem;height:1.1rem;flex-shrink:0;" viewBox="0 0 24 24" fill="#0284c7">
+        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.96 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+    </svg>
+    텔레그램
+    <span id="tg-status-dot" style="width:0.5rem;height:0.5rem;border-radius:9999px;background:#cbd5e1;flex-shrink:0;"></span>
+</button>
+<div id="tg-modal" class="hidden fixed inset-0 bg-slate-900 bg-opacity-60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-2">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#e0f2fe;">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="#0284c7"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.96 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                </div>
+                <h2 class="text-lg font-bold text-slate-900">텔레그램 알림 설정</h2>
+            </div>
+            <button id="tg-modal-close" class="text-slate-400 hover:text-slate-600 p-1">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <!-- 안내 -->
+        <div class="bg-sky-50 border border-sky-200 rounded-xl p-3 mb-5 text-xs text-sky-700 leading-relaxed">
+            <p class="font-bold mb-1">🤖 Bot Token과 Chat ID 입력 방법</p>
+            <p>1. 텔레그램에서 <strong>@BotFather</strong> 검색 → <code>/newbot</code></p>
+            <p>2. 봇에게 아무 메시지 전송 후 아래 URL로 Chat ID 확인:</p>
+            <code class="block mt-1 bg-sky-100 rounded p-1 break-all">https://api.telegram.org/bot{토큰}/getUpdates</code>
+        </div>
+
+        <div class="space-y-4 mb-5">
+            <div>
+                <label class="input-label">Bot Token</label>
+                <input id="tg-token" type="text" class="input-field" placeholder="예: 7812345678:AAFxxxxxxxxxxxxxxxx">
+            </div>
+            <div>
+                <label class="input-label">Chat ID</label>
+                <input id="tg-chatid" type="text" class="input-field" placeholder="예: 123456789">
+            </div>
+            <div class="flex items-center gap-2">
+                <input type="checkbox" id="tg-enabled" class="w-4 h-4 accent-sky-500">
+                <label for="tg-enabled" class="text-sm font-medium text-slate-700">계산 완료 시 자동 전송 활성화</label>
+            </div>
+        </div>
+
+        <div id="tg-test-result" class="hidden mb-4 p-3 rounded-xl text-sm font-medium"></div>
+
+        <div class="flex gap-3">
+            <button id="tg-test-btn" class="flex-1 btn btn-secondary text-sm py-2.5">
+                📨 테스트 전송
+            </button>
+            <button id="tg-save-btn" class="flex-1 btn btn-primary text-sm py-2.5" style="background:#0284c7;">
+                저장
+            </button>
+        </div>
+    </div>
+</div>
+     ============================================================ -->
+<template id="app1-template">
+<div id="printable-area">
+    <header class="mb-10 flex flex-col md:flex-row md:items-end justify-between border-b border-slate-200 pb-6">
+        <div>
+            <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"><span id="displayCompanyName">DCF Valuation</span></h1>
+            <p class="mt-2 text-slate-500 font-medium">기업의 미래 현금흐름을 통한 내재가치 도출</p>
+        </div>
+        <div class="hidden md:block text-right">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Analysis Mode</span>
+            <div id="mode-display" class="text-indigo-700 font-extrabold text-lg">Standard Valuation</div>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+        <div class="xl:col-span-8">
+            <div id="dcf-form">
+                <!-- 01 기본 설정 -->
+                <div class="card">
+                    <h3 class="flex items-center text-lg font-bold text-slate-800 mb-6"><span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center mr-3 text-sm border border-indigo-100">01</span> 기본 설정</h3>
+                    <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200">
+                        <label class="input-label mb-2">분석 모드</label>
+                        <div class="flex space-x-1 p-1 bg-white rounded-lg border border-slate-200">
+                            <label class="flex-1 cursor-pointer"><input type="radio" name="analysis_mode" value="valuation" class="peer sr-only" checked><div class="text-center py-2 text-sm font-medium text-slate-500 rounded-md peer-checked:bg-indigo-50 peer-checked:text-indigo-700 peer-checked:font-bold transition-all">가치평가</div></label>
+                            <label class="flex-1 cursor-pointer"><input type="radio" name="analysis_mode" value="temperature_check" class="peer sr-only"><div class="text-center py-2 text-sm font-medium text-slate-500 rounded-md peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:font-bold transition-all">주가 온도(역산)</div></label>
+                        </div>
+                    </div>
+                    <!-- 통화 단위 선택 -->
+                    <div class="bg-amber-50 rounded-xl p-4 mb-6 border border-amber-200">
+                        <label class="input-label mb-2 text-amber-800">통화 단위 (Currency)</label>
+                        <div class="flex space-x-1 p-1 bg-white rounded-lg border border-amber-200">
+                            <label class="flex-1 cursor-pointer"><input type="radio" name="currency_mode" value="KRW" class="peer sr-only" checked><div class="text-center py-2 text-sm font-medium text-slate-500 rounded-md peer-checked:bg-indigo-50 peer-checked:text-indigo-700 peer-checked:font-bold transition-all">🇰🇷 KRW (억원)</div></label>
+                            <label class="flex-1 cursor-pointer"><input type="radio" name="currency_mode" value="USD" class="peer sr-only"><div class="text-center py-2 text-sm font-medium text-slate-500 rounded-md peer-checked:bg-amber-100 peer-checked:text-amber-800 peer-checked:font-bold transition-all">🇺🇸 USD (mil)</div></label>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="input-group"><label for="companyName" class="input-label">기업명</label><div class="input-wrapper"><input type="text" id="companyName" class="input-field" placeholder="예: 삼성전자"></div></div>
+                        <div id="target-price-group" class="input-group hidden"><label for="targetPrice" class="input-label text-teal-700">현재 주가</label><div class="input-wrapper"><input type="number" id="targetPrice" class="input-field border-teal-200" placeholder="0"><span class="input-unit unit-price text-teal-700">원</span></div></div>
+                        <div class="input-group md:col-span-2">
+                            <label class="input-label">모델 유형</label>
+                            <div class="flex items-center space-x-6 mt-2">
+                                <label class="inline-flex items-center cursor-pointer"><input type="radio" name="valuation_model" value="high_growth" class="form-radio text-indigo-600 h-4 w-4" checked><span class="ml-2 text-sm text-slate-700 font-medium">2단계 (고성장 + 영구성장)</span></label>
+                                <label class="inline-flex items-center cursor-pointer"><input type="radio" name="valuation_model" value="terminal_only" class="form-radio text-indigo-600 h-4 w-4"><span class="ml-2 text-sm text-slate-700 font-medium">1단계 (영구성장만)</span></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="temp-range-group" class="hidden mt-4 pt-4 border-t border-slate-100">
+                        <h4 class="text-sm font-bold text-slate-700 mb-3">민감도 분석 범위 설정</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="input-group"><label class="input-label">성장률 시작</label><div class="input-wrapper"><input type="number" id="growthRateStart" class="input-field" value="10"><span class="input-unit">%</span></div></div>
+                            <div class="input-group"><label class="input-label">성장률 종료</label><div class="input-wrapper"><input type="number" id="growthRateEnd" class="input-field" value="60"><span class="input-unit">%</span></div></div>
+                            <div class="input-group"><label class="input-label">이익률 시작</label><div class="input-wrapper"><input type="number" id="marginRateStart" class="input-field" value="10"><span class="input-unit">%</span></div></div>
+                            <div class="input-group"><label class="input-label">이익률 종료</label><div class="input-wrapper"><input type="number" id="marginRateEnd" class="input-field" value="50"><span class="input-unit">%</span></div></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                            <div class="input-group"><label class="input-label">성장률 간격(Step)</label><select id="growthRateStep" class="input-field cursor-pointer"><option value="0.2">0.2% (정밀)</option><option value="0.5">0.5%</option><option value="1" selected>1.0% (기본)</option><option value="2">2.0% (개략)</option></select></div>
+                            <div class="input-group"><label class="input-label">이익률 간격(Step)</label><select id="marginRateStep" class="input-field cursor-pointer"><option value="0.1">0.1% (정밀)</option><option value="0.5">0.5%</option><option value="1" selected>1.0% (기본)</option><option value="2">2.0% (개략)</option></select></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 02 재무 실적 -->
+                <div class="card">
+                    <h3 class="flex items-center text-lg font-bold text-slate-800 mb-6"><span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center mr-3 text-sm border border-indigo-100">02</span> 재무 실적 및 성장성</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="input-group"><label for="baseRevenue" class="input-label">기준 연도 매출액</label><div class="input-wrapper"><input type="number" id="baseRevenue" class="input-field" placeholder="0"><span class="input-unit unit-fin">억원</span></div></div>
+                        <div class="input-group"><label for="baseEbit" class="input-label">기준 연도 영업이익(EBIT)</label><div class="input-wrapper"><input type="number" id="baseEbit" class="input-field" placeholder="0"><span class="input-unit unit-fin">억원</span></div></div>
+                        <div class="input-group"><label for="baseMargin" class="input-label">현재 영업이익률</label><div class="input-wrapper"><input type="text" id="baseMargin" class="input-field input-readonly" readonly><span class="input-unit">%</span></div></div>
+                        <div class="input-group"><label for="terminalGrowthRate" class="input-label">영구 성장률 (g)</label><div class="input-wrapper"><input type="number" id="terminalGrowthRate" class="input-field" value="3"><span class="input-unit">%</span></div></div>
+                    </div>
+                    <div id="high-growth-section" class="mt-6 pt-6 border-t border-slate-100 transition-opacity duration-300">
+                        <h4 class="text-sm font-bold text-indigo-700 mb-4 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg> 고성장 기간 가정</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="input-group"><label for="growthPeriod" class="input-label">고성장 지속 기간</label><div class="input-wrapper"><input type="number" id="growthPeriod" class="input-field" value="10"><span class="input-unit">년</span></div><p class="text-xs text-slate-500 mt-1 ml-1">* 5년 초과 시 6년차부터 선형 감소</p></div>
+                            <div id="high-growth-rate-group" class="input-group"><label for="highGrowthRate" class="input-label">초기 고성장률</label><div class="input-wrapper"><input type="number" id="highGrowthRate" class="input-field"><span class="input-unit">%</span></div></div>
+                            <div id="target-margin-group" class="input-group md:col-span-2"><label for="targetMargin" class="input-label">목표 영업이익률</label><div class="input-wrapper"><input type="number" id="targetMargin" class="input-field"><span class="input-unit">%</span></div></div>
+                            <div id="margin-period-group" class="input-group md:col-span-2 hidden bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                <label class="input-label text-slate-700">목표 이익률 도달 패턴</label>
+                                <div class="flex items-center space-x-6 mt-2">
+                                    <label class="inline-flex items-center cursor-pointer"><input type="radio" name="margin_period" value="period" class="form-radio text-indigo-600"><span class="ml-2 text-sm text-slate-700 font-medium">전 기간 선형 증가</span></label>
+                                    <label class="inline-flex items-center cursor-pointer"><input type="radio" name="margin_period" value="5" class="form-radio text-indigo-600" checked><span class="ml-2 text-sm text-slate-700 font-medium">5년차 도달 후 유지</span></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 03 할인율 -->
+                <div class="card">
+                    <h3 class="flex items-center text-lg font-bold text-slate-800 mb-6"><span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center mr-3 text-sm border border-indigo-100">03</span> 할인율 및 재투자</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                        <div class="input-group"><label for="highGrowthWacc" class="input-label">고성장기 할인율(WACC)</label><div class="input-wrapper"><input type="number" id="highGrowthWacc" class="input-field" value="10"><span class="input-unit">%</span></div></div>
+                        <div class="input-group"><label for="terminalWacc" class="input-label">영속기 할인율(WACC)</label><div class="input-wrapper"><input type="number" id="terminalWacc" class="input-field" value="10"><span class="input-unit">%</span></div></div>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <label class="input-label mb-2">재투자 추정 방식</label>
+                        <div class="flex space-x-4 mb-4">
+                            <label class="inline-flex items-center cursor-pointer"><input type="radio" name="reinvestment_method" value="sc_ratio" class="form-radio text-indigo-600" checked><span class="ml-2 text-sm font-medium text-slate-700">매출/자본 비율 (S/C Ratio)</span></label>
+                            <label class="inline-flex items-center cursor-pointer"><input type="radio" name="reinvestment_method" value="reinvestment_rate" class="form-radio text-indigo-600"><span class="ml-2 text-sm font-medium text-slate-700">재투자율 (ROI)</span></label>
+                        </div>
+                        <div id="sc_ratio_inputs" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="input-group"><label for="industry" class="input-label">산업군 (Damodaran Data)</label><div class="relative"><select id="industry" class="input-field appearance-none cursor-pointer"></select><div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></div></div></div>
+                            <div class="input-group"><label for="salesToCapital" class="input-label">적용 S/C Ratio</label><div class="input-wrapper"><input type="number" id="salesToCapital" class="input-field" step="0.1"><span class="input-unit">x</span></div></div>
+                        </div>
+                        <div id="reinvestment_rate_inputs" class="hidden"><div class="input-group"><label for="reinvestmentRate" class="input-label">세후영업이익 대비 재투자율</label><div class="input-wrapper"><input type="number" id="reinvestmentRate" class="input-field" value="60"><span class="input-unit">%</span></div></div></div>
+                    </div>
+                </div>
+
+                <!-- 04 자산 및 부채 -->
+                <div class="card">
+                    <h3 class="flex items-center text-lg font-bold text-slate-800 mb-6"><span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center mr-3 text-sm border border-indigo-100">04</span> 자산 및 부채 (Equity Bridge)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="input-group"><label for="interestBearingDebt" class="input-label text-red-600">(-) 이자발생부채</label><div class="input-wrapper"><input type="number" id="interestBearingDebt" class="input-field" placeholder="0"><span class="input-unit unit-fin">억원</span></div></div>
+                        <div class="input-group"><label for="cashAndEquivalents" class="input-label text-blue-600">(+) 현금 및 현금성자산</label><div class="input-wrapper"><input type="number" id="cashAndEquivalents" class="input-field" placeholder="0"><span class="input-unit unit-fin">억원</span></div></div>
+                        <div class="input-group"><label for="nonOperatingAssets" class="input-label text-blue-600">(+) 비영업자산</label><div class="input-wrapper"><input type="number" id="nonOperatingAssets" class="input-field" placeholder="0"><span class="input-unit unit-fin">억원</span></div></div>
+                        <div class="input-group"><label for="nonOpAssetReflectionRate" class="input-label">비영업자산 반영비율</label><div class="input-wrapper"><input type="number" id="nonOpAssetReflectionRate" class="input-field" value="100"><span class="input-unit">%</span></div></div>
+                        <div class="input-group md:col-span-2"><label for="outstandingShares" class="input-label">발행주식 총수</label><div class="input-wrapper"><input type="number" id="outstandingShares" class="input-field" placeholder="예: 5000000 (500만 주)"><span class="input-unit">주</span></div><p class="text-xs text-slate-400 mt-1 ml-1 shares-hint">* 숫자만 입력 (예: 50,000,000 → 50000000)</p></div>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 mt-8 pb-12">
+                    <button id="calculate-btn" class="flex-1 btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                        계산 실행
+                    </button>
+                    <button id="save-png-btn" class="flex-1 btn btn-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        결과 저장
+                    </button>
+                </div>
+            </div>
+
+            <div id="temperature-check-container" class="hidden mt-8">
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-2 text-center text-slate-800">주가 온도(Implied Assumptions)</h2>
+                    <p class="text-sm text-center text-slate-500 mb-6">현재 주가를 정당화하는 <span class="text-indigo-700 font-bold">성장률</span>과 <span class="text-teal-700 font-bold">이익률</span>의 조합</p>
+                    <div id="temp-chart-container" class="relative h-[50vh] w-full"><canvas id="temperatureChart"></canvas></div>
+                    <div id="sensitivity-table-container" class="mt-8 overflow-x-auto"></div>
+                </div>
+            </div>
+
+            <div id="details-section" class="hidden">
+                <div class="card">
+                    <div class="tab-nav">
+                        <button class="tab-btn active" data-tab="cashflow-details">상세 현금흐름</button>
+                        <button class="tab-btn" data-tab="chart-details">차트 분석</button>
+                        <button class="tab-btn" data-tab="formula-details">산출 근거</button>
+                    </div>
+                    <div id="cashflow-details" class="tab-content"><div class="overflow-x-auto rounded-lg border border-slate-200"><table class="w-full custom-table"><thead><tr><th>연도</th><th id="rev-col-header">매출액(억)</th><th>성장률</th><th id="ebit-col-header">EBIT(억)</th><th>이익률</th><th>재투자율</th><th id="fcff-col-header">FCFF(억)</th><th>현재가치</th></tr></thead><tbody id="cashflow-table-body" class="bg-white"></tbody></table></div></div>
+                    <div id="chart-details" class="tab-content hidden"><div class="relative h-[400px] w-full"><canvas id="valuationChart"></canvas></div></div>
+                    <div id="formula-details" class="tab-content hidden prose prose-slate max-w-none p-4 bg-slate-50 rounded-lg text-sm"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="xl:col-span-4">
+            <div id="result-container" class="card result-gradient sticky top-8 border-none shadow-xl transform hover:scale-[1.02] transition-transform">
+                <div class="text-center pb-6 border-b border-slate-200">
+                    <h2 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider mb-2">Valuation Result</h2>
+                    <h3 id="resultCompanyName" class="text-xl font-bold text-slate-900 mb-4"></h3>
+                    <div id="valuation-summary"><p class="text-slate-500 text-sm">입력값을 채우고<br>'계산 실행'을 눌러주세요.</p></div>
+                </div>
+                <div id="result-details" class="pt-6 space-y-3 text-sm text-slate-800 hidden"></div>
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+
+<!-- ============================================================
+     App2 Template: SOTP
+     ============================================================ -->
+<template id="app2-template">
+<div id="printable-area">
+    <header class="mb-10 flex flex-col md:flex-row md:items-end justify-between border-b border-slate-200 pb-6">
+        <div><h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"><span id="displayCompanyName">SOTP Valuation</span></h1><p class="mt-2 text-slate-500 font-medium">사업부문별(Sum-of-the-parts) 가치합산 모델</p></div>
+        <div class="hidden md:block text-right"><span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Analysis Mode</span><div class="text-teal-700 font-extrabold text-lg">Segment Valuation</div></div>
+    </header>
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+        <div class="xl:col-span-8">
+            <div id="dcf-form">
+                <div class="card"><h3 class="flex items-center text-lg font-bold text-slate-800 mb-6"><span class="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center mr-3 text-sm border border-teal-100">01</span> 기본 설정</h3>
+                <!-- 통화 단위 선택 -->
+                <div class="bg-amber-50 rounded-xl p-4 mb-6 border border-amber-200">
+                    <label class="input-label mb-2 text-amber-800">통화 단위 (Currency)</label>
+                    <div class="flex space-x-1 p-1 bg-white rounded-lg border border-amber-200">
+                        <label class="flex-1 cursor-pointer"><input type="radio" name="currency_mode" value="KRW" class="peer sr-only" checked><div class="text-center py-2 text-sm font-medium text-slate-500 rounded-md peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:font-bold transition-all">🇰🇷 KRW (억원)</div></label>
+                        <label class="flex-1 cursor-pointer"><input type="radio" name="currency_mode" value="USD" class="peer sr-only"><div class="text-center py-2 text-sm font-medium text-slate-500 rounded-md peer-checked:bg-amber-100 peer-checked:text-amber-800 peer-checked:font-bold transition-all">🇺🇸 USD (mil)</div></label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5"><div class="input-group"><label for="companyName" class="input-label">기업명</label><div class="input-wrapper"><input type="text" id="companyName" class="input-field" placeholder="예: 삼성전자"></div></div><div class="input-group"><label class="input-label">모델 유형</label><div class="flex items-center space-x-6 mt-2"><label class="inline-flex items-center cursor-pointer"><input type="radio" name="valuation_model" value="high_growth" class="form-radio text-teal-600 h-4 w-4" checked><span class="ml-2 text-sm text-slate-700 font-medium">2단계 (고성장 + 영구성장)</span></label><label class="inline-flex items-center cursor-pointer"><input type="radio" name="valuation_model" value="terminal_only" class="form-radio text-teal-600 h-4 w-4"><span class="ml-2 text-sm text-slate-700 font-medium">1단계 (영구성장만)</span></label></div></div></div></div>
+                <div class="card"><h3 class="flex items-center text-lg font-bold text-slate-800 mb-6"><span class="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center mr-3 text-sm border border-teal-100">02</span> 전사 실적 (Base Year)</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-5"><div class="input-group"><label for="baseRevenue" class="input-label">기준 연도 매출액</label><div class="input-wrapper"><input type="number" id="baseRevenue" class="input-field"><span class="input-unit unit-fin">억원</span></div></div><div class="input-group"><label for="baseOperatingIncome" class="input-label">기준 연도 영업이익</label><div class="input-wrapper"><input type="number" id="baseOperatingIncome" class="input-field"><span class="input-unit unit-fin">억원</span></div></div><div class="input-group"><label for="baseMargin" class="input-label">전사 영업이익률</label><div class="input-wrapper"><input type="text" id="baseMargin" class="input-field input-readonly" readonly><span class="input-unit">%</span></div></div><div class="input-group"><label for="terminalGrowthRate" class="input-label">영구 성장률</label><div class="input-wrapper"><input type="number" id="terminalGrowthRate" class="input-field" value="3"><span class="input-unit">%</span></div></div></div></div>
+                <div id="high-growth-assumptions-wrapper">
+                    <div class="card bg-teal-50 border-teal-100"><label class="text-sm font-bold text-teal-800 mb-2 block">가정 설정 방식 선택</label><div class="flex space-x-1 p-1 bg-white rounded-lg border border-teal-100 max-w-md"><label class="flex-1 cursor-pointer"><input type="radio" name="assumption_method" value="standard" class="peer sr-only" checked><div class="text-center py-2 text-sm font-medium text-slate-500 rounded-md peer-checked:bg-teal-500 peer-checked:text-white transition-all">표준 (단일)</div></label><label class="flex-1 cursor-pointer"><input type="radio" name="assumption_method" value="segment" class="peer sr-only"><div class="text-center py-2 text-sm font-medium text-slate-500 rounded-md peer-checked:bg-teal-500 peer-checked:text-white transition-all">부문별 합산 (SOTP)</div></label></div></div>
+                    <div id="standard-mode-container" class="card"><h3 class="font-bold text-slate-800 mb-4">표준 성장 가정</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-5"><div class="input-group"><label for="highGrowthRate_std" class="input-label">초기 고성장률</label><div class="input-wrapper"><input type="number" id="highGrowthRate_std" class="input-field"><span class="input-unit">%</span></div></div><div class="input-group"><label for="targetMargin_std" class="input-label">목표 영업이익률</label><div class="input-wrapper"><input type="number" id="targetMargin_std" class="input-field"><span class="input-unit">%</span></div></div></div></div>
+                    <div id="segment-mode-container" class="hidden">
+                        <div class="card border-l-4 border-l-teal-500">
+                            <div class="flex justify-between items-center mb-6"><h3 class="text-lg font-bold text-slate-800">부문별 가정 (Segments)</h3><button id="add-segment-btn" type="button" class="btn btn-sm bg-teal-50 text-teal-700 hover:bg-teal-100 font-bold border border-teal-200"> + 부문 추가</button></div>
+                            <div class="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200"><label class="input-label mb-2">목표 이익률 산정 방식</label><div class="flex space-x-4"><label class="inline-flex items-center cursor-pointer"><input type="radio" name="margin_method" value="consolidated" class="form-radio text-teal-600" checked><span class="ml-2 text-sm text-slate-700 font-medium">전사 목표이익률 직접 입력</span></label><label class="inline-flex items-center cursor-pointer"><input type="radio" name="margin_method" value="segment_specific" class="form-radio text-teal-600"><span class="ml-2 text-sm text-slate-700 font-medium">부문별 목표 가중평균</span></label></div></div>
+                            <div id="segment-consolidated-margin-inputs" class="input-group mb-6"><label for="targetMargin_seg_con" class="input-label">전사 목표 영업이익률</label><div class="input-wrapper"><input type="number" id="targetMargin_seg_con" class="input-field"><span class="input-unit">%</span></div></div>
+                            <div class="text-xs text-slate-600 mb-4 bg-white p-3 rounded border border-teal-200 shadow-sm flex items-center font-medium"><svg class="w-4 h-4 mr-2 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>고성장 기간: <strong id="segment-growth-period-display" class="text-teal-700"></strong>년 / 도달 패턴: <strong id="segment-margin-period-display" class="text-teal-700"></strong></span></div>
+                            <div id="segments-container" class="space-y-4"></div>
+                        </div>
+                    </div>
+                    <div id="common-growth-fieldset" class="card"><h3 class="text-lg font-bold text-slate-800 mb-6">공통 성장 설정</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-5"><div class="input-group"><label for="growthPeriod" class="input-label">고성장 기간</label><div class="input-wrapper"><input type="number" id="growthPeriod" class="input-field"><span class="input-unit">년</span></div></div><div id="margin-period-group" class="input-group"><label class="input-label">목표 이익률 도달 패턴</label><div class="flex items-center space-x-4 mt-2"><label class="inline-flex items-center cursor-pointer"><input type="radio" name="margin_period" value="period" class="form-radio text-teal-600"><span class="ml-2 text-sm text-slate-700 font-medium">선형 증가</span></label><label class="inline-flex items-center cursor-pointer"><input type="radio" name="margin_period" value="5" class="form-radio text-teal-600" checked><span class="ml-2 text-sm text-slate-700 font-medium">5년차 도달 후 유지</span></label></div></div></div></div>
+                    <div class="card"><h3 class="text-lg font-bold text-slate-800 mb-6">할인율 및 재투자</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4"><div class="input-group"><label for="highGrowthWacc" class="input-label">고성장기 WACC</label><div class="input-wrapper"><input type="number" id="highGrowthWacc" class="input-field" value="10"><span class="input-unit">%</span></div></div><div class="input-group"><label for="terminalWacc" class="input-label">영속기 WACC</label><div class="input-wrapper"><input type="number" id="terminalWacc" class="input-field" value="10"><span class="input-unit">%</span></div></div></div><div class="bg-slate-50 p-4 rounded-xl border border-slate-200"><label class="input-label mb-2">재투자 추정</label><div class="flex space-x-4 mb-3"><label class="inline-flex items-center"><input type="radio" name="reinvestment_method" value="sc_ratio" class="form-radio text-teal-600" checked><span class="ml-2 text-sm font-medium">S/C Ratio</span></label><label class="inline-flex items-center"><input type="radio" name="reinvestment_method" value="reinvestment_rate" class="form-radio text-teal-600"><span class="ml-2 text-sm font-medium">재투자율</span></label></div><div id="sc_ratio_inputs" class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="input-group"><label for="industry" class="input-label">산업군</label><select id="industry" class="input-field"></select></div><div class="input-group"><label for="salesToCapital" class="input-label">S/C Ratio</label><input type="number" id="salesToCapital" class="input-field" step="0.1"></div></div><div id="reinvestment_rate_inputs" class="hidden"><div class="input-group"><label for="reinvestmentRate" class="input-label">재투자율</label><div class="input-wrapper"><input type="number" id="reinvestmentRate" class="input-field"><span class="input-unit">%</span></div></div></div></div></div>
+                </div>
+                <div class="card"><h3 class="flex items-center text-lg font-bold text-slate-800 mb-6"><span class="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center mr-3 text-sm border border-teal-100">03</span> 순자산 가치 조정</h3><div class="space-y-4"><div class="bg-slate-50 p-4 rounded-xl border border-slate-200"><div class="flex justify-between items-center mb-2"><label class="input-label text-red-600">(-) 이자발생부채</label><button type="button" id="add-debt-detail-btn" class="text-xs text-slate-500 hover:text-slate-800 font-bold">+ 세부항목 추가</button></div><div class="input-wrapper mb-2"><input type="number" id="interestBearingDebt" class="input-field input-readonly" readonly><span class="input-unit unit-fin">억원</span></div><div id="debt-details-container" class="space-y-2 pl-2"></div></div><div class="bg-slate-50 p-4 rounded-xl border border-slate-200"><div class="flex justify-between items-center mb-2"><label class="input-label text-blue-600">(+) 현금성자산</label><button type="button" id="add-cash-detail-btn" class="text-xs text-slate-500 hover:text-slate-800 font-bold">+ 세부항목 추가</button></div><div class="input-wrapper mb-2"><input type="number" id="cashAndEquivalents" class="input-field input-readonly" readonly><span class="input-unit unit-fin">억원</span></div><div id="cash-details-container" class="space-y-2 pl-2"></div></div><div class="bg-slate-50 p-4 rounded-xl border border-slate-200"><div class="flex justify-between items-center mb-2"><label class="input-label text-blue-600">(+) 비영업자산</label><button type="button" id="add-nonOp-detail-btn" class="text-xs text-slate-500 hover:text-slate-800 font-bold">+ 세부항목 추가</button></div><div class="input-wrapper mb-2"><input type="number" id="nonOperatingAssets" class="input-field input-readonly" readonly><span class="input-unit unit-fin">억원</span></div><div id="nonOp-details-container" class="space-y-2 pl-2 mb-2"></div><div class="input-group border-t border-slate-200 pt-2"><label class="text-xs text-slate-500 block mb-1 font-medium">반영비율</label><div class="input-wrapper"><input type="number" id="nonOpAssetReflectionRate" class="input-field py-1 text-xs" value="100"><span class="input-unit text-xs">%</span></div></div></div><div class="input-group"><label for="outstandingShares" class="input-label">발행주식 총수</label><div class="input-wrapper"><input type="number" id="outstandingShares" class="input-field" placeholder="예: 50000000 (5,000만 주)"><span class="input-unit">주</span></div><p class="text-xs text-slate-400 mt-1 ml-1 shares-hint">* 숫자만 입력 (쉼표 없이)</p></div></div></div>
+                <div class="flex gap-4 mt-8 pb-12">
+                    <button id="calculate-btn" class="flex-1 btn btn-primary">계산 실행</button>
+                    <button id="save-png-btn" class="flex-1 btn btn-secondary">결과 저장</button>
+                </div>
+            </div>
+        </div>
+        <div class="xl:col-span-4">
+            <div id="result-container" class="card result-gradient sticky top-8 border-none shadow-xl transform hover:scale-[1.02] transition-transform">
+                <div class="text-center pb-6 border-b border-slate-200"><h2 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider mb-2">SOTP Valuation</h2><h3 id="resultCompanyName" class="text-xl font-bold text-slate-900 mb-4"></h3><div id="valuation-summary"><p class="text-slate-500 text-sm">입력값을 채우고<br>'계산 실행'을 눌러주세요.</p></div></div>
+                <div id="result-details" class="pt-6 space-y-3 text-sm text-slate-800 hidden"></div>
+            </div>
+        </div>
+    </div>
+    <div id="details-section" class="hidden mt-8"><div class="card"><div class="tab-nav"><button class="tab-btn active" data-tab="cashflow-details">상세 현금흐름</button><button class="tab-btn" data-tab="chart-details">차트 분석</button><button class="tab-btn" data-tab="formula-details">산출 근거</button></div><div id="cashflow-details" class="tab-content"><div class="overflow-x-auto rounded-lg border border-slate-200"></div></div><div id="chart-details" class="tab-content hidden"><div class="relative h-[400px] w-full"><canvas id="valuationChart"></canvas></div></div><div id="formula-details" class="tab-content hidden prose prose-slate max-w-none p-4 bg-slate-50 rounded-lg text-sm"></div></div></div>
+</div>
+<div id="custom-modal" class="hidden fixed inset-0 bg-slate-900 bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center"><div class="relative p-6 border w-full max-w-sm shadow-2xl rounded-2xl bg-white"><div class="text-center"><div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4"><svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div><h3 id="modal-title" class="text-lg leading-6 font-bold text-slate-900">오류 발생</h3><div class="mt-2 py-2"><p id="modal-body" class="text-sm text-slate-500"></p></div><div id="modal-footer" class="mt-4"><button id="modal-ok-btn" class="w-full btn btn-primary py-2 text-sm">확인</button></div></div></div></div>
+<template id="detail-item-template"><div class="detail-item-row flex items-center gap-2 mb-2"><input type="text" class="input-field detail-item-name !py-1.5 !text-xs" placeholder="항목명"><input type="number" class="input-field detail-item-value !py-1.5 !text-xs text-right" placeholder="금액"><button type="button" class="delete-detail-btn text-slate-400 hover:text-red-500 p-1"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div></template>
+<template id="segment-template"><div class="segment-block bg-white border border-teal-100 rounded-xl p-5 shadow-sm relative mb-4 hover:shadow-md transition-shadow"><button type="button" class="delete-segment-btn absolute top-3 right-3 text-slate-300 hover:text-red-500 transition-colors"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button><div class="grid grid-cols-1 md:grid-cols-12 gap-4"><div class="md:col-span-12"><label class="text-xs font-bold text-teal-600 uppercase mb-1 block">Segment Name</label><input type="text" class="input-field segment-name font-bold" placeholder="사업부문명 (예: 반도체)"></div><div class="md:col-span-6"><label class="input-label text-xs segment-rev-label">매출액 (억원)</label><input type="number" class="input-field segment-baseRevenue"></div><div class="md:col-span-6 segment-baseMargin-container"><label class="input-label text-xs">이익률 (%)</label><input type="number" class="input-field segment-baseMargin"></div></div><div class="mt-4 pt-4 border-t border-slate-100"><div class="flex justify-between items-center mb-2"><label class="text-xs font-bold text-slate-500">성장률 추정</label><div class="flex space-x-3 text-xs"><label><input type="radio" name="growth_projection_method" value="direct" checked class="text-teal-600"> 직접입력</label><label><input type="radio" name="growth_projection_method" value="ms" class="text-teal-600"> M/S기반</label></div></div><div class="growth-projection-inputs"><div class="direct-growth-input"><div class="input-wrapper"><input type="number" class="input-field segment-highGrowthRate" placeholder="연평균 성장률"><span class="input-unit">%</span></div></div><div class="ms-projection-input hidden grid grid-cols-2 gap-2"><div><label class="text-[10px] text-slate-400">현재 시장규모</label><input type="number" class="input-field segment-currentMarketSize text-xs"></div><div><label class="text-[10px] text-slate-400">현재 M/S</label><input type="text" class="input-field segment-currentMs input-readonly text-xs" readonly></div><div><label class="text-[10px] text-slate-400">5년후 시장</label><input type="number" class="input-field segment-targetMarketSize text-xs"></div><div><label class="text-[10px] text-slate-400">목표 M/S</label><input type="number" class="input-field segment-targetMs text-xs"></div><div class="col-span-2"><label class="text-[10px] text-teal-600 font-bold">산출 CAGR</label><input type="text" class="input-field segment-cagr input-readonly text-xs font-bold text-teal-600" readonly></div></div></div></div><div class="segment-target-margin-input hidden mt-3"><label class="input-label text-xs">목표 이익률 (%)</label><input type="number" class="input-field segment-targetMargin"></div><div class="mt-3 pt-3 bg-slate-50 -mx-5 -mb-5 p-3 rounded-b-xl border-t border-slate-100 flex justify-between text-xs"><div class="text-slate-500">5년 후 예상 매출: <span class="font-bold text-slate-800"><input type="text" class="bg-transparent border-none w-20 text-right p-0 segment-projected-revenue" readonly></span><span class="segment-proj-unit">억</span></div><div class="text-slate-500 segment-projected-oi-container">영업이익: <span class="font-bold text-slate-800"><input type="text" class="bg-transparent border-none w-20 text-right p-0 segment-projected-oi" readonly></span><span class="segment-proj-unit">억</span></div></div></div></template>
+</template>
+
+<!-- ============================================================
+     App3 Template: Damodaran Breakeven (Vanilla JS – React 불필요)
+     ============================================================ -->
+<template id="app3-template">
+<div id="printable-area" class="theme-green">
+    <header class="mb-10 flex flex-col md:flex-row md:items-end justify-between border-b border-slate-200 pb-6">
+        <div>
+            <h1 id="a3-title" class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Damodaran Breakeven Model</h1>
+            <p class="mt-2 text-slate-500 font-medium">시가총액을 정당화하기 위한 매출 규모 역산</p>
+        </div>
+        <div class="hidden md:block text-right">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Analysis Mode</span>
+            <div class="text-emerald-700 font-extrabold text-lg">Reverse Engineering</div>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+        <!-- Left: Inputs -->
+        <div class="xl:col-span-8">
+
+            <!-- 01 기본 정보 -->
+            <div class="card">
+                <h3 class="flex items-center text-lg font-bold text-slate-800 mb-6">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mr-3 text-sm border border-emerald-200">01</span>
+                    기본 정보 (Market Data)
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="input-group md:col-span-2">
+                        <label class="input-label">기업명</label>
+                        <div class="input-wrapper"><input type="text" id="a3_companyName" class="input-field" placeholder="예: 쿠팡"></div>
+                    </div>
+                    <!-- 통화 단위 선택 -->
+                    <div class="input-group md:col-span-2">
+                        <div class="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                            <label class="input-label mb-2 text-amber-800">통화 단위 (Currency)</label>
+                            <div class="flex space-x-1 p-1 bg-white rounded-lg border border-amber-200">
+                                <label class="flex-1 cursor-pointer"><input type="radio" name="currency_mode" value="KRW" class="peer sr-only" checked><div class="text-center py-2 text-sm font-medium text-slate-500 rounded-md peer-checked:bg-emerald-50 peer-checked:text-emerald-700 peer-checked:font-bold transition-all">🇰🇷 KRW (억원)</div></label>
+                                <label class="flex-1 cursor-pointer"><input type="radio" name="currency_mode" value="USD" class="peer sr-only"><div class="text-center py-2 text-sm font-medium text-slate-500 rounded-md peer-checked:bg-amber-100 peer-checked:text-amber-800 peer-checked:font-bold transition-all">🇺🇸 USD (mil)</div></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" style="color:#059669;font-weight:700;">현재 시가총액</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="a3_marketCap" class="input-field" value="10000" style="font-weight:700;color:#059669;background:#ecfdf5;border-color:#a7f3d0;">
+                            <span class="input-unit unit-fin">억원</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">현재 매출액</label>
+                        <div class="input-wrapper"><input type="number" id="a3_currentRevenue" class="input-field" value="500"><span class="input-unit unit-fin">억원</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 02 자본비용 -->
+            <div class="card">
+                <h3 class="flex items-center text-lg font-bold text-slate-800 mb-6">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mr-3 text-sm border border-emerald-200">02</span>
+                    자본비용 (Cost of Equity)
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div class="input-group">
+                        <label class="input-label">무위험이자율 (Rf)</label>
+                        <div class="input-wrapper"><input type="number" id="a3_rf" class="input-field" value="3.5" step="0.1"><span class="input-unit">%</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Equity Risk Premium</label>
+                        <div class="input-wrapper"><input type="number" id="a3_erp" class="input-field" value="6.5" step="0.1"><span class="input-unit">%</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Beta</label>
+                        <div class="input-wrapper"><input type="number" id="a3_beta" class="input-field" value="1.0" step="0.1"></div>
+                    </div>
+                </div>
+                <div class="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center">
+                    <span class="text-sm font-semibold text-slate-600">계산된 자기자본비용 (Ke = Rf + β × ERP)</span>
+                    <span id="a3_ke_display" class="font-bold text-emerald-600">–</span>
+                </div>
+            </div>
+
+            <!-- 03 성장 및 수익성 -->
+            <div class="card">
+                <h3 class="flex items-center text-lg font-bold text-slate-800 mb-6">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mr-3 text-sm border border-emerald-200">03</span>
+                    성장 및 수익성 가정
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="input-group">
+                        <label class="input-label">영구 성장률 (g)</label>
+                        <div class="input-wrapper"><input type="number" id="a3_stableGrowth" class="input-field" value="3.0" step="0.1"><span class="input-unit">%</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">목표 순이익률 (Margin)</label>
+                        <div class="input-wrapper"><input type="number" id="a3_targetMargin" class="input-field" value="15.0" step="0.1"><span class="input-unit">%</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">목표 ROE</label>
+                        <div class="input-wrapper"><input type="number" id="a3_targetROE" class="input-field" value="20.0" step="0.1"><span class="input-unit">%</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">성장 기간 (Years)</label>
+                        <div class="input-wrapper"><input type="number" id="a3_years" class="input-field" value="5"><span class="input-unit">년</span></div>
+                    </div>
+                    <div class="input-group md:col-span-2">
+                        <label class="input-label">평균 현금 수익률 (Yield)</label>
+                        <div class="input-wrapper"><input type="number" id="a3_cashYield" class="input-field" value="0.5" step="0.1"><span class="input-unit">%</span></div>
+                        <p class="text-xs text-slate-400 mt-1 ml-1">배당수익률 + 자사주매입률</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 04 역산 시뮬레이션 -->
+            <div class="card" style="border-left:4px solid #3b82f6;">
+                <h3 class="flex items-center text-lg font-bold text-slate-800 mb-6">
+                    <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mr-3 text-sm border border-blue-200">04</span>
+                    역산 시뮬레이션 (Reverse)
+                </h3>
+                <div class="input-group">
+                    <label class="input-label" style="color:#059669;font-weight:700;">나의 예상 연평균 매출 성장률 (CAGR)</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="a3_expectedCAGR" class="input-field" value="20.0" step="0.1" style="font-weight:700;color:#059669;background:#ecfdf5;border-color:#a7f3d0;">
+                        <span class="input-unit">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-4 mt-8 pb-12">
+                <button id="a3_printBtn" class="flex-1 btn btn-primary" style="background:#047857;">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                    결과 인쇄 / 저장
+                </button>
+            </div>
+        </div>
+
+        <!-- Right: Results -->
+        <div class="xl:col-span-4">
+            <!-- Error Panel -->
+            <div id="a3_errorPanel" class="card hidden" style="background:#fef2f2;border-color:#fecaca;">
+                <h3 class="font-bold mb-2" style="color:#dc2626;">⚠️ 입력값 오류</h3>
+                <p id="a3_errorMsg" class="text-sm" style="color:#ef4444;"></p>
+            </div>
+
+            <!-- Main Result Panel -->
+            <div id="a3_resultPanel" class="card result-gradient sticky top-8 shadow-xl">
+                <div class="text-center pb-6 border-b border-slate-200">
+                    <h2 class="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-1">Breakeven Revenue</h2>
+                    <div id="a3_breakevenRev" class="text-4xl font-extrabold mb-1" style="color:#059669;">–</div>
+                    <p id="a3_breakevenSub" class="text-xs text-slate-500">계산 대기 중</p>
+                </div>
+
+                <div class="pt-5 space-y-0">
+                    <!-- 필요 성장률 -->
+                    <div class="flex justify-between items-center py-2 border-b border-slate-200">
+                        <span class="text-sm text-slate-500">필요 성장률 (CAGR)</span>
+                        <div class="text-right">
+                            <div id="a3_reqCAGR" class="text-base font-medium text-slate-900">–</div>
+                            <div id="a3_reqCAGR_sub" class="text-[10px] text-slate-400"></div>
+                        </div>
+                    </div>
+                    <!-- 현재 매출 대비 -->
+                    <div class="flex justify-between items-center py-2 border-b border-slate-200">
+                        <span class="text-sm text-slate-500">현재 매출 대비</span>
+                        <div id="a3_mult" class="text-base font-medium text-slate-900">–</div>
+                    </div>
+
+                    <div class="my-3 border-t border-slate-200"></div>
+                    <div class="text-xs font-bold uppercase mb-2" style="color:#3b82f6;">Reverse Valuation Result</div>
+
+                    <!-- 내 예상 시가총액 -->
+                    <div class="flex justify-between items-center py-2 border-b border-slate-200">
+                        <span class="text-sm text-slate-500">내 예상 시가총액</span>
+                        <div class="text-right">
+                            <div id="a3_implMC" class="text-base font-medium text-slate-900">–</div>
+                            <div id="a3_implMC_sub" class="text-[10px] text-slate-400"></div>
+                        </div>
+                    </div>
+
+                    <!-- 상승 여력 -->
+                    <div class="flex justify-between items-center py-2 mt-2 rounded-lg px-3 border border-slate-200" style="background:#f8fafc;">
+                        <span class="text-sm font-semibold text-slate-600">상승 여력 (Upside)</span>
+                        <span id="a3_upside" class="text-lg font-bold text-slate-400">–</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assumptions Summary -->
+            <div class="card mt-4" style="background:#f0fdf4;border-color:#bbf7d0;">
+                <h4 class="text-xs font-bold text-emerald-700 uppercase mb-3">주요 산출 가정</h4>
+                <div class="space-y-1 text-xs text-slate-600">
+                    <div class="flex justify-between"><span>Implied P/S Ratio</span><span id="a3_ps" class="font-bold">–</span></div>
+                    <div class="flex justify-between"><span>재투자율</span><span id="a3_rr" class="font-bold">–</span></div>
+                    <div class="flex justify-between"><span>배당성향</span><span id="a3_pr" class="font-bold">–</span></div>
+                    <div class="flex justify-between"><span>N년후 목표 시총</span><span id="a3_fmc" class="font-bold">–</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+
+<!-- ============================================================
+     Main JS: Constants · Utils · App1 · App2 · Router
+     ============================================================ -->
+<script>
+'use strict';
+
+// ============================================================
+// CONSTANTS  (단일 소스 – 여기서만 수정)
+// ============================================================
+const TAX_RATE               = 0.275;
+const MARGIN_CONVERGENCE_YEAR = 5;    // "5년차 도달 후 유지" 패턴의 수렴 연도
+
+// ============================================================
+// CURRENCY CONFIGURATION
+// ============================================================
+let CURRENCY_MODE = 'KRW';
+const CURRENCY_CFG = {
+    KRW: {
+        unitLabel:    '억원',
+        priceUnit:    '원',
+        multiplier:   1e8,
+        formatVPS:    v => new Intl.NumberFormat('ko-KR',{style:'currency',currency:'KRW'}).format(Math.round(v)),
+        formatAmount: v => `${new Intl.NumberFormat('ko-KR').format(Math.round(v))} 억`,
+        formatMoney:  n => {
+            if (!isFinite(n)||isNaN(n)) return '–';
+            if (n >= 1e4) return (n/1e4).toFixed(2)+'조';
+            return n.toLocaleString('ko-KR')+'억';
+        },
+        sharesPlaceholder: '예: 5000000 (500만 주)',
+        sharesHint:   '* 숫자만 입력 (예: 50,000,000 → 50000000)',
+        mktCapDef:    10000,
+        revDef:       500,
+        tableHeader:  '매출액(억)',
+        ebitHeader:   'EBIT(억)',
+        fcffHeader:   'FCFF(억)',
+    },
+    USD: {
+        unitLabel:    'mil USD',
+        priceUnit:    'USD',
+        multiplier:   1e6,
+        formatVPS:    v => '$' + v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),
+        formatAmount: v => '$' + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}) + 'M',
+        formatMoney:  n => {
+            if (!isFinite(n)||isNaN(n)) return '–';
+            if (n >= 1000) return '$'+(n/1000).toFixed(2)+'B';
+            return '$'+n.toFixed(1)+'M';
+        },
+        sharesPlaceholder: '예: 1000000000 (1B shares)',
+        sharesHint:   '* Enter raw share count as on Yahoo Finance (e.g. 15.37B → 15370000000)',
+        mktCapDef:    1000,
+        revDef:       500,
+        tableHeader:  'Rev (mil)',
+        ebitHeader:   'EBIT (mil)',
+        fcffHeader:   'FCFF (mil)',
+    }
+};
+function getCurrencyCfg() { return CURRENCY_CFG[CURRENCY_MODE]; }
+
+// ============================================================
+// SHARED UTILITIES
+// ============================================================
+const Utils = {
+    formatNum(value, decimals = 0) {
+        if (isNaN(value) || value === null) return 'N/A';
+        return new Intl.NumberFormat('ko-KR', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        }).format(value);
+    },
+    saveToStorage(key, data) {
+        try { localStorage.setItem(key, JSON.stringify(data)); } catch (_) { /* silent */ }
+    },
+    loadFromStorage(key) {
+        try {
+            const raw = localStorage.getItem(key);
+            return raw ? JSON.parse(raw) : null;
+        } catch (_) { return null; }
+    },
+    /** 텔레그램으로 메시지 전송 (Bot API 직접 호출) */
+    async sendToTelegram(text) {
+        const cfg = this.getTelegramConfig();
+        if (!cfg.enabled || !cfg.token || !cfg.chatId) return;
+        try {
+            const res = await fetch(`https://api.telegram.org/bot${cfg.token}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: cfg.chatId, text, parse_mode: 'HTML' })
+            });
+            if (!res.ok) console.warn('Telegram 전송 실패:', await res.text());
+        } catch (e) { console.warn('Telegram 네트워크 오류:', e); }
+    },
+    getTelegramConfig() {
+        return Utils.loadFromStorage('tg_config') || { token: '', chatId: '', enabled: false };
+    },
+    /** App1/App2 DCF 결과 메시지 생성 */
+    buildDcfMsg(appLabel, inputs, pvFcffSum, pvTerminal, final) {
+        const n  = (v, d=0) => Utils.formatNum(v, d);
+        const p  = (v) => (v * 100).toFixed(1) + '%';
+        const ts = new Date().toLocaleString('ko-KR');
+        const cfg = getCurrencyCfg();
+        const unit = cfg.unitLabel;
+        return [
+            `📊 <b>${inputs.companyName || '무제'} – ${appLabel} 결과</b>`,
+            `🕐 ${ts}`,
+            `━━━━━━━━━━━━━━━`,
+            `💰 <b>주당 내재가치: ${cfg.formatVPS(Math.round(final.vps))}</b>`,
+            `🏦 자기자본가치: ${n(final.equity)} ${unit}`,
+            `  ├ 영업가치: ${n(final.opAsset)} ${unit}`,
+            `  │  ├ 고성장현가: ${n(pvFcffSum)} ${unit}`,
+            `  │  └ 영구현가:   ${n(pvTerminal)} ${unit}`,
+            `  └ 순자산조정: ${n(inputs.cashAndEquivalents + final.reflected - inputs.interestBearingDebt)} ${unit}`,
+            ``,
+            `📥 <b>주요 입력 가정</b>`,
+            `  기준매출: ${n(inputs.baseRevenue)} ${unit}  /  EBIT: ${n(inputs.baseEbit)} ${unit}`,
+            `  초기성장률: ${p(inputs.highGrowthRate)}  /  목표이익률: ${p(inputs.targetMargin)}`,
+            `  고성장기간: ${inputs.growthPeriod}년  /  WACC: ${p(inputs.highGrowthWacc)}`,
+            `  영구성장률(g): ${p(inputs.terminalGrowthRate)}`,
+            `  이자발생부채: ${n(inputs.interestBearingDebt)} ${unit}  /  현금: ${n(inputs.cashAndEquivalents)} ${unit}`,
+            `  발행주식수: ${n(inputs.outstandingShares)} 주`,
+        ].join('\n');
+    },
+    /** App3 Damodaran 결과 메시지 생성 */
+    buildDamodaranMsg(d) {
+        const p  = (v) => (v * 100).toFixed(2) + '%';
+        const fm = (v) => {
+            if (!isFinite(v)||isNaN(v)) return '–';
+            if (v >= 1e4) return (v/1e4).toFixed(2)+'조';
+            return v.toLocaleString()+'억';
+        };
+        const ts = new Date().toLocaleString('ko-KR');
+        return [
+            `📊 <b>${d.companyName||'무제'} – Damodaran Breakeven</b>`,
+            `🕐 ${ts}`,
+            `━━━━━━━━━━━━━━━`,
+            `🎯 <b>Breakeven Revenue: ${fm(d.breakevenRev)}</b>`,
+            `📈 필요 CAGR: ${p(d.reqCAGR)} (${d.years}년)`,
+            `📊 현재 매출 대비: ${d.mult.toFixed(1)}배`,
+            ``,
+            `🔁 <b>역산 시뮬레이션 (예상 CAGR ${p(d.expectedCAGR)})</b>`,
+            `  내 예상 시가총액: ${fm(d.impliedCurrentMC)}`,
+            `  상승 여력: ${d.upside > 0 ? '+' : ''}${p(d.upside)}`,
+            ``,
+            `📥 <b>주요 입력 가정</b>`,
+            `  현재 시총: ${fm(d.marketCap)}억  /  매출: ${fm(d.currentRevenue)}억`,
+            `  Ke: ${p(d.ke)}  (Rf ${d.rf}% + β${d.beta}×ERP${d.erp}%)`,
+            `  영구성장률: ${d.g}%  /  목표이익률: ${d.margin}%`,
+            `  목표ROE: ${d.roe}%  /  성장기간: ${d.years}년`,
+        ].join('\n');
+    },
+    /** 계산 버튼에 로딩 스피너를 표시하고, 완료 후 복원 */
+    withLoadingBtn(btn, fn) {
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 계산 중...`;
+        // setTimeout으로 브라우저 렌더링 기회 부여 후 연산 실행
+        setTimeout(() => {
+            try { fn(); } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        }, 20);
+    }
+};
+
+// ============================================================
+// DAMODARAN S/C RATIOS
+// ============================================================
+const damodaranSCRatios = {
+    "Advertising":2.22,"Aerospace/Defense":2.11,"Air Transport":1.13,"Apparel":3.73,"Auto & Truck":2.21,
+    "Auto Parts":2.51,"Bank (Money Center)":1.48,"Banks (Regional)":1.48,"Beverage (Alcoholic)":1.62,
+    "Beverage (Soft)":2.26,"Broadcasting":2.00,"Brokerage & Investment Banking":1.12,"Building Materials":1.83,
+    "Business & Consumer Services":2.50,"Cable TV":1.09,"Chemical (Basic)":1.51,"Chemical (Specialty)":1.95,
+    "Coal & Related Energy":0.77,"Computer Services":2.45,"Computers/Peripherals":2.25,"Construction":2.26,
+    "Diversified":1.70,"Drugs (Biotechnology)":3.42,"Drugs (Pharmaceutical)":2.40,"Education":2.57,
+    "Electrical Equipment":2.22,"Electronics (Consumer & Office)":2.51,"Electronics (General)":1.98,
+    "Engineering/Construction":2.26,"Entertainment":1.87,"Environmental & Waste Services":1.05,
+    "Farming/Agriculture":1.44,"Financial Svcs. (Non-bank & Insurance)":1.85,"Food Processing":2.37,
+    "Food Wholesalers":3.65,"Furn/Home Furnishings":3.01,"Green & Renewable Energy":0.88,
+    "Healthcare Products":2.17,"Healthcare Support Services":2.05,"Heathcare Information Technology":2.80,
+    "Homebuilding":2.14,"Hospitals/Healthcare Facilities":1.63,"Hotel/Gaming":1.49,"Household Products":2.76,
+    "Information Services":2.80,"Insurance (General)":1.07,"Insurance (Life)":0.75,"Insurance (Prop/Cas.)":0.94,
+    "Investments & Asset Management":1.12,"Machinery":1.95,"Metals & Mining":1.16,"Office Equipment & Services":2.45,
+    "Oil/Gas (Distribution)":1.21,"Oil/Gas (Integrated)":0.81,"Oil/Gas (Production and Exploration)":0.77,
+    "Packaging & Container":1.83,"Paper/Forest Products":1.44,"Power":0.88,"Precious Metals":0.89,
+    "Publ/Printing":2.00,"R.E.I.T.":0.58,"Real Estate (Development)":0.99,"Real Estate (General/Services)":2.01,
+    "Recreation":2.11,"Reinsurance":0.94,"Restaurant/Dining":3.73,"Retail (Automotive)":2.93,
+    "Retail (Building Supply)":2.93,"Retail (Distributors)":3.65,"Retail (General)":3.01,
+    "Retail (Grocery and Food)":3.65,"Retail (Online)":5.48,"Retail (Special Lines)":2.76,
+    "Rubber & Tires":2.21,"Semiconductor":1.55,"Semiconductor Equip":2.25,"Shipbuilding & Marine":1.69,
+    "Shoe":3.73,"Software (Entertainment)":2.88,"Software (Internet)":3.28,
+    "Software (System & Application)":2.88,"Steel":1.69,"Telecom (Wireless)":1.09,
+    "Telecom. Equipment":1.98,"Telecom. Services":1.09,"Tobacco":1.62,"Transportation":1.69,
+    "Transportation (Railroads)":1.13,"Trucking":1.69,"Utility (General)":0.81,"Utility (Water)":0.61,
+    "Total Market":1.70
+};
+
+// ============================================================
+// APP 1 – DCF & Temperature Check
+// ============================================================
+const App1 = {
+    valuationChartInstance:  null,
+    temperatureChartInstance: null,
+    LS_KEY: 'dcf_app1_v1',
+
+    init() {
+        for (const k in this) if (typeof this[k] === 'function') this[k] = this[k].bind(this);
+        this.addEventListeners();
+        this.initializeApp();
+        this.restoreFromStorage();
+    },
+
+    // --- Helpers ---
+    content() { return document.getElementById('app-content'); },
+    formatNum: (v, d = 0) => Utils.formatNum(v, d),
+
+    // --- Event Listeners ---
+    addEventListeners() {
+        const c = this.content();
+        c.querySelector('#calculate-btn').addEventListener('click', this.handleCalculation);
+        c.querySelector('#save-png-btn').addEventListener('click', this.handleSaveAsPng);
+        c.querySelector('#companyName').addEventListener('input', this.updateCompanyName);
+        c.querySelectorAll('input[name="analysis_mode"]').forEach(r => r.addEventListener('change', this.toggleAnalysisMode));
+        c.querySelector('#industry').addEventListener('change', (e) => { if (e.target.value) c.querySelector('#salesToCapital').value = e.target.value; });
+        c.querySelectorAll('input[name="reinvestment_method"]').forEach(r => r.addEventListener('change', this.toggleReinvestmentInputs));
+        c.querySelectorAll('input[name="valuation_model"]').forEach(r => r.addEventListener('change', this.toggleModelInputs));
+        c.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', (e) => {
+            c.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            c.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            c.querySelector('#' + e.target.dataset.tab).classList.remove('hidden');
+        }));
+        c.querySelector('#baseRevenue').addEventListener('input', this.updateBaseMargin);
+        c.querySelector('#baseEbit').addEventListener('input', this.updateBaseMargin);
+        c.querySelector('#growthPeriod').addEventListener('input', this.toggleMarginPeriodInput);
+        // Currency toggle
+        c.querySelectorAll('input[name="currency_mode"]').forEach(r => r.addEventListener('change', (e) => {
+            CURRENCY_MODE = e.target.value;
+            this.updateCurrencyUnits();
+        }));
+    },
+
+    updateCurrencyUnits() {
+        const c = this.content();
+        const cfg = getCurrencyCfg();
+        c.querySelectorAll('.unit-fin').forEach(el => el.textContent = cfg.unitLabel);
+        c.querySelectorAll('.unit-price').forEach(el => el.textContent = cfg.priceUnit);
+        const sharesInput = c.querySelector('#outstandingShares');
+        if (sharesInput) {
+            sharesInput.placeholder = cfg.sharesPlaceholder;
+            const hint = c.querySelector('.shares-hint');
+            if (hint) hint.textContent = cfg.sharesHint;
+        }
+        // Update table headers if visible
+        const revH = c.querySelector('#rev-col-header');
+        const ebitH = c.querySelector('#ebit-col-header');
+        const fcffH = c.querySelector('#fcff-col-header');
+        if (revH)  revH.textContent  = cfg.tableHeader;
+        if (ebitH) ebitH.textContent = cfg.ebitHeader;
+        if (fcffH) fcffH.textContent = cfg.fcffHeader;
+    },
+
+    initializeApp() {
+        const c = this.content();
+        const sel = c.querySelector('#industry');
+        sel.innerHTML = '<option value="">산업군 선택...</option>';
+        Object.entries(damodaranSCRatios).sort((a,b) => a[0].localeCompare(b[0])).forEach(([name, ratio]) => {
+            const o = document.createElement('option');
+            o.value = ratio; o.textContent = `${name} (${ratio})`;
+            sel.appendChild(o);
+        });
+        this.toggleReinvestmentInputs();
+        this.toggleModelInputs();
+        this.toggleMarginPeriodInput();
+        this.updateCompanyName();
+        this.toggleAnalysisMode();
+        this.updateBaseMargin();
+        this.updateCurrencyUnits();
+    },
+
+    // --- localStorage ---
+    restoreFromStorage() {
+        const data = Utils.loadFromStorage(this.LS_KEY);
+        if (!data) return;
+        const c = this.content();
+        const set = (id, val) => { const el = c.querySelector('#' + id); if (el && val !== undefined) el.value = val; };
+        set('companyName', data.companyName);
+        set('baseRevenue', data.baseRevenue);
+        set('baseEbit', data.baseEbit);
+        set('growthPeriod', data.growthPeriod);
+        set('highGrowthRate', data.highGrowthRate);
+        set('targetMargin', data.targetMargin);
+        set('terminalGrowthRate', data.terminalGrowthRate);
+        set('highGrowthWacc', data.highGrowthWacc);
+        set('terminalWacc', data.terminalWacc);
+        set('salesToCapital', data.salesToCapital);
+        set('reinvestmentRate', data.reinvestmentRate);
+        set('interestBearingDebt', data.interestBearingDebt);
+        set('cashAndEquivalents', data.cashAndEquivalents);
+        set('nonOperatingAssets', data.nonOperatingAssets);
+        set('nonOpAssetReflectionRate', data.nonOpAssetReflectionRate);
+        set('outstandingShares', data.outstandingShares);
+        if (data.model) { const r = c.querySelector(`input[name="valuation_model"][value="${data.model}"]`); if (r) r.checked = true; }
+        if (data.reinvMethod) { const r = c.querySelector(`input[name="reinvestment_method"][value="${data.reinvMethod}"]`); if (r) r.checked = true; }
+        this.updateBaseMargin();
+        this.toggleMarginPeriodInput();
+        this.updateCompanyName();
+    },
+
+    // --- UI Toggles ---
+    toggleAnalysisMode() {
+        const c = this.content();
+        const mode = c.querySelector('input[name="analysis_mode"]:checked').value;
+        c.querySelector('#temperature-check-container').classList.toggle('hidden', mode !== 'temperature_check');
+        c.querySelector('#target-price-group').classList.toggle('hidden', mode !== 'temperature_check');
+        c.querySelector('#temp-range-group').classList.toggle('hidden', mode !== 'temperature_check');
+        c.querySelector('#high-growth-rate-group').classList.toggle('hidden', mode === 'temperature_check');
+        c.querySelector('#target-margin-group').classList.toggle('hidden', mode === 'temperature_check');
+        c.querySelector('#details-section').classList.add('hidden');
+        c.querySelector('#calculate-btn').querySelector('svg + ') || null; // no-op, button text updated elsewhere
+    },
+
+    updateCompanyName() {
+        const c = this.content();
+        const name = c.querySelector('#companyName').value;
+        c.querySelector('#displayCompanyName').textContent = name ? `${name} DCF Valuation` : 'DCF Valuation';
+    },
+
+    toggleModelInputs() {
+        const c = this.content();
+        const model = c.querySelector('input[name="valuation_model"]:checked').value;
+        const sec = c.querySelector('#high-growth-section');
+        if (model === 'terminal_only') sec.classList.add('opacity-50', 'pointer-events-none');
+        else sec.classList.remove('opacity-50', 'pointer-events-none');
+    },
+
+    toggleMarginPeriodInput() {
+        const c = this.content();
+        const gp = parseInt(c.querySelector('#growthPeriod').value) || 0;
+        c.querySelector('#margin-period-group').classList.toggle('hidden', gp <= MARGIN_CONVERGENCE_YEAR);
+    },
+
+    updateBaseMargin() {
+        const c = this.content();
+        const rev  = parseFloat(c.querySelector('#baseRevenue').value) || 0;
+        const ebit = parseFloat(c.querySelector('#baseEbit').value)    || 0;
+        c.querySelector('#baseMargin').value = rev > 0 ? ((ebit / rev) * 100).toFixed(2) : 'N/A';
+    },
+
+    toggleReinvestmentInputs() {
+        const c = this.content();
+        const m = c.querySelector('input[name="reinvestment_method"]:checked').value;
+        c.querySelector('#sc_ratio_inputs').classList.toggle('hidden', m !== 'sc_ratio');
+        c.querySelector('#reinvestment_rate_inputs').classList.toggle('hidden', m !== 'reinvestment_rate');
+    },
+
+    // --- Input Collection ---
+    getAllInputs() {
+        const c = this.content();
+        return {
+            companyName:           c.querySelector('#companyName').value || 'N/A',
+            targetPrice:           parseFloat(c.querySelector('#targetPrice').value) || 0,
+            model:                 c.querySelector('input[name="valuation_model"]:checked').value,
+            baseRevenue:           parseFloat(c.querySelector('#baseRevenue').value) || 0,
+            baseEbit:              parseFloat(c.querySelector('#baseEbit').value) || 0,
+            growthPeriod:          parseInt(c.querySelector('#growthPeriod').value) || 0,
+            highGrowthRate:        parseFloat(c.querySelector('#highGrowthRate').value) / 100 || 0,
+            targetMargin:          parseFloat(c.querySelector('#targetMargin').value) / 100 || 0,
+            marginPeriod:          c.querySelector('input[name="margin_period"]:checked').value,
+            terminalGrowthRate:    parseFloat(c.querySelector('#terminalGrowthRate').value) / 100 || 0,
+            highGrowthWacc:        parseFloat(c.querySelector('#highGrowthWacc').value) / 100 || 0,
+            terminalWacc:          parseFloat(c.querySelector('#terminalWacc').value) / 100 || 0,
+            reinvMethod:           c.querySelector('input[name="reinvestment_method"]:checked').value,
+            salesToCapital:        parseFloat(c.querySelector('#salesToCapital').value) || 0,
+            reinvestmentRate:      parseFloat(c.querySelector('#reinvestmentRate').value) / 100 || 0,
+            interestBearingDebt:   parseFloat(c.querySelector('#interestBearingDebt').value) || 0,
+            cashAndEquivalents:    parseFloat(c.querySelector('#cashAndEquivalents').value) || 0,
+            nonOperatingAssets:    parseFloat(c.querySelector('#nonOperatingAssets').value) || 0,
+            nonOpAssetReflectionRate: parseFloat(c.querySelector('#nonOpAssetReflectionRate').value) / 100 || 0,
+            outstandingShares:     parseFloat(c.querySelector('#outstandingShares').value) || 0,
+            growthRateStart:       parseFloat(c.querySelector('#growthRateStart').value) / 100 || 0,
+            growthRateEnd:         parseFloat(c.querySelector('#growthRateEnd').value) / 100 || 0,
+            growthRateStep:        parseFloat(c.querySelector('#growthRateStep').value) / 100 || 0.01,
+            marginRateStart:       parseFloat(c.querySelector('#marginRateStart').value) / 100 || 0,
+            marginRateEnd:         parseFloat(c.querySelector('#marginRateEnd').value) / 100 || 0,
+            marginRateStep:        parseFloat(c.querySelector('#marginRateStep').value) / 100 || 0.01,
+        };
+    },
+
+    // --- Main Dispatch ---
+    handleCalculation() {
+        const c = this.content();
+        const btn  = c.querySelector('#calculate-btn');
+        const mode = c.querySelector('input[name="analysis_mode"]:checked').value;
+        Utils.withLoadingBtn(btn, () => {
+            if (mode === 'valuation') this.runValuation();
+            else this.runTemperatureCheck();
+        });
+    },
+
+    // --- Core DCF helper (reused by temperature check) ---
+    calculateValuePerShare(inputs) {
+        if (inputs.outstandingShares === 0 || inputs.terminalWacc <= inputs.terminalGrowthRate) return 0;
+        let cumPV = 0, pvTV = 0, opAsset = 0;
+
+        if (inputs.model === 'high_growth') {
+            let rev = inputs.baseRevenue;
+            const baseMargin = inputs.baseRevenue > 0 ? inputs.baseEbit / inputs.baseRevenue : 0;
+            let dynGR = inputs.highGrowthRate;
+            const declineStep = inputs.growthPeriod > MARGIN_CONVERGENCE_YEAR
+                ? (inputs.highGrowthRate - inputs.terminalGrowthRate) / (inputs.growthPeriod - MARGIN_CONVERGENCE_YEAR) : 0;
+
+            for (let i = 1; i <= inputs.growthPeriod; i++) {
+                if (i > MARGIN_CONVERGENCE_YEAR) dynGR -= declineStep;
+                const gr = Math.max(dynGR, inputs.terminalGrowthRate);
+                const prev = rev; rev *= (1 + gr);
+                let margin;
+                if (inputs.marginPeriod === '5' && inputs.growthPeriod > MARGIN_CONVERGENCE_YEAR) {
+                    margin = i <= MARGIN_CONVERGENCE_YEAR
+                        ? baseMargin + (inputs.targetMargin - baseMargin) / MARGIN_CONVERGENCE_YEAR * i
+                        : inputs.targetMargin;
+                } else {
+                    const step = inputs.growthPeriod > 0 ? (inputs.targetMargin - baseMargin) / inputs.growthPeriod : 0;
+                    margin = baseMargin + step * i;
+                }
+                margin = Math.min(margin, inputs.targetMargin);
+                const ebitAT = rev * margin * (1 - TAX_RATE);
+                const reinv = inputs.reinvMethod === 'sc_ratio'
+                    ? (inputs.salesToCapital === 0 ? 0 : (rev - prev) / inputs.salesToCapital)
+                    : ebitAT * inputs.reinvestmentRate;
+                cumPV += (ebitAT - reinv) / Math.pow(1 + inputs.highGrowthWacc, i);
+            }
+            const termFCFF = rev * (1 + inputs.terminalGrowthRate) * inputs.targetMargin * (1 - TAX_RATE) * (1 - inputs.terminalGrowthRate / inputs.terminalWacc);
+            pvTV = (termFCFF / (inputs.terminalWacc - inputs.terminalGrowthRate)) / Math.pow(1 + inputs.highGrowthWacc, inputs.growthPeriod);
+            opAsset = cumPV + pvTV;
+        } else {
+            const termFCFF = inputs.baseEbit * (1 + inputs.terminalGrowthRate) * (1 - TAX_RATE) * (1 - inputs.terminalGrowthRate / inputs.terminalWacc);
+            opAsset = termFCFF / (inputs.terminalWacc - inputs.terminalGrowthRate);
+        }
+        const equity = opAsset - inputs.interestBearingDebt + inputs.cashAndEquivalents + inputs.nonOperatingAssets * inputs.nonOpAssetReflectionRate;
+        const vps = equity * getCurrencyCfg().multiplier / inputs.outstandingShares;
+        return isNaN(vps) ? 0 : vps;
+    },
+
+    // --- Valuation Run ---
+    runValuation() {
+        const inputs = this.getAllInputs();
+        if (inputs.outstandingShares === 0 || inputs.terminalWacc <= inputs.terminalGrowthRate) {
+            alert('필수 입력값 오류를 확인하세요.'); return;
+        }
+        // Save to localStorage
+        Utils.saveToStorage(this.LS_KEY, inputs);
+
+        const c = this.content();
+        let cumPV = 0, pvTV = 0, opAsset = 0;
+        const tbody = c.querySelector('#cashflow-table-body');
+        tbody.innerHTML = '';
+        const chartLabels = ['기준'], revData = [inputs.baseRevenue], ebitData = [inputs.baseEbit], fcffData = [0];
+
+        if (inputs.model === 'high_growth') {
+            let rev = inputs.baseRevenue;
+            const baseMargin = inputs.baseRevenue > 0 ? inputs.baseEbit / inputs.baseRevenue : 0;
+            let dynGR = inputs.highGrowthRate;
+            const declineStep = inputs.growthPeriod > MARGIN_CONVERGENCE_YEAR
+                ? (inputs.highGrowthRate - inputs.terminalGrowthRate) / (inputs.growthPeriod - MARGIN_CONVERGENCE_YEAR) : 0;
+
+            for (let i = 1; i <= inputs.growthPeriod; i++) {
+                if (i > MARGIN_CONVERGENCE_YEAR) dynGR -= declineStep;
+                const gr = Math.max(dynGR, inputs.terminalGrowthRate);
+                const prev = rev; rev *= (1 + gr);
+                let margin;
+                if (inputs.marginPeriod === '5' && inputs.growthPeriod > MARGIN_CONVERGENCE_YEAR) {
+                    margin = i <= MARGIN_CONVERGENCE_YEAR
+                        ? baseMargin + (inputs.targetMargin - baseMargin) / MARGIN_CONVERGENCE_YEAR * i
+                        : inputs.targetMargin;
+                } else {
+                    const step = inputs.growthPeriod > 0 ? (inputs.targetMargin - baseMargin) / inputs.growthPeriod : 0;
+                    margin = baseMargin + step * i;
+                }
+                margin = Math.min(margin, inputs.targetMargin);
+                const ebit = rev * margin;
+                const ebitAT = ebit * (1 - TAX_RATE);
+                let reinv;
+                if (inputs.reinvMethod === 'sc_ratio') {
+                    if (inputs.salesToCapital === 0) { alert('S/C Ratio는 0이 될 수 없습니다.'); return; }
+                    reinv = (rev - prev) / inputs.salesToCapital;
+                } else { reinv = ebitAT * inputs.reinvestmentRate; }
+                const fcff = ebitAT - reinv;
+                const pvFcff = fcff / Math.pow(1 + inputs.highGrowthWacc, i);
+                cumPV += pvFcff;
+                chartLabels.push(`${i}년`); revData.push(rev); ebitData.push(ebit); fcffData.push(fcff);
+                tbody.innerHTML += `<tr>
+                    <td>${i}</td><td>${this.formatNum(rev)}</td>
+                    <td class="text-indigo-600">${this.formatNum(gr*100,2)}%</td>
+                    <td>${this.formatNum(ebit)}</td>
+                    <td>${this.formatNum(margin*100,2)}%</td>
+                    <td>${this.formatNum((ebitAT>0?reinv/ebitAT:0)*100,1)}%</td>
+                    <td>${this.formatNum(fcff)}</td>
+                    <td class="font-bold">${this.formatNum(pvFcff)}</td>
+                </tr>`;
+            }
+            const termFCFF = rev*(1+inputs.terminalGrowthRate)*inputs.targetMargin*(1-TAX_RATE)*(1-inputs.terminalGrowthRate/inputs.terminalWacc);
+            pvTV = (termFCFF/(inputs.terminalWacc-inputs.terminalGrowthRate))/Math.pow(1+inputs.highGrowthWacc,inputs.growthPeriod);
+            opAsset = cumPV + pvTV;
+        } else {
+            const termFCFF = inputs.baseEbit*(1+inputs.terminalGrowthRate)*(1-TAX_RATE)*(1-inputs.terminalGrowthRate/inputs.terminalWacc);
+            opAsset = termFCFF/(inputs.terminalWacc-inputs.terminalGrowthRate);
+            pvTV = opAsset;
+        }
+
+        const reflected = inputs.nonOperatingAssets * inputs.nonOpAssetReflectionRate;
+        const equity = opAsset - inputs.interestBearingDebt + inputs.cashAndEquivalents + reflected;
+        const vps = equity * getCurrencyCfg().multiplier / inputs.outstandingShares;
+
+        this.displayResults(inputs, cumPV, pvTV, { opAsset, equity, vps, reflected });
+        this.displayFormulas(inputs, { opAsset, equity, vps, reflected });
+        if (inputs.model === 'high_growth') this.renderValuationChart(chartLabels, revData, ebitData, fcffData);
+        c.querySelector('#details-section').classList.remove('hidden');
+    },
+
+    // --- Temperature Check ---
+    runTemperatureCheck() {
+        const base = this.getAllInputs();
+        if (base.targetPrice === 0) { alert('현재 주가를 입력해주세요.'); return; }
+        const growthAxis  = Array.from({ length: Math.round((base.growthRateEnd - base.growthRateStart) / base.growthRateStep) + 1 }, (_,i) => base.growthRateStart + i * base.growthRateStep);
+        const marginAxis  = Array.from({ length: Math.round((base.marginRateEnd  - base.marginRateStart)  / base.marginRateStep)  + 1 }, (_,i) => base.marginRateStart  + i * base.marginRateStep);
+        const tableData   = growthAxis.map(g => marginAxis.map(m => this.calculateValuePerShare({ ...base, highGrowthRate: g, targetMargin: m })));
+        this.renderTemperatureChart(tableData, growthAxis, marginAxis, base.targetPrice);
+        this.displayTemperatureTable(tableData, growthAxis, marginAxis, base.targetPrice);
+    },
+
+    displayTemperatureTable(data, growthRates, margins, targetPrice) {
+        const container = this.content().querySelector('#sensitivity-table-container');
+        const target2x  = targetPrice * 2;
+        let html = `<table id="sensitivity-table" class="w-full text-xs border-collapse">
+            <thead>
+                <tr>
+                    <th class="bg-slate-100 p-2 border text-center" rowspan="2" style="min-width:56px;">
+                        <div class="text-slate-500 font-bold">성장률</div>
+                        <div class="text-slate-300 text-[10px]">↓ \ →</div>
+                        <div class="text-slate-500 font-bold">이익률</div>
+                    </th>`;
+        margins.forEach(m => { html += `<th class="bg-slate-50 p-2 border text-center">${(m*100).toFixed(1)}%</th>`; });
+        html += `</tr></thead><tbody>`;
+        data.forEach((row, i) => {
+            html += `<tr><th class="bg-slate-50 p-2 border text-center font-bold">${(growthRates[i]*100).toFixed(0)}%</th>`;
+            row.forEach(price => {
+                const diff   = (price - targetPrice) / targetPrice;
+                const diff2x = (price - target2x)    / target2x;
+                let cls;
+                if (Math.abs(diff2x) <= 0.05)  cls = 'bg-amber-100 font-bold text-amber-700 ring-1 ring-amber-400';
+                else if (Math.abs(diff) <= 0.05) cls = 'bg-indigo-100 font-bold text-indigo-700';
+                else if (diff < -0.05)           cls = 'bg-blue-50 text-blue-400';
+                else                             cls = 'bg-red-50 text-red-400';
+                html += `<td class="${cls} p-1 text-center border">${this.formatNum(price,0)}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        // 범례
+        html += `<div class="flex flex-wrap gap-4 mt-3 text-xs font-medium text-slate-600">
+            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-indigo-100 ring-1 ring-indigo-300"></span> 현재주가 ±5%</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-amber-100 ring-1 ring-amber-400"></span> 현재주가 2배 ±5% (${getCurrencyCfg().formatVPS(target2x)})</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-blue-50 ring-1 ring-blue-200"></span> 현재주가 미만</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-red-50 ring-1 ring-red-200"></span> 현재주가 초과</span>
+        </div>`;
+        container.innerHTML = html;
+    },
+
+    renderTemperatureChart(tableData, growthRates, margins, targetPrice) {
+        if (this.temperatureChartInstance) this.temperatureChartInstance.destroy();
+        const ctx      = this.content().querySelector('#temperatureChart').getContext('2d');
+        const target2x = targetPrice * 2;
+        const allPrices = tableData.flat().filter(p => p > 0);
+        const minP = Math.min(...allPrices), maxP = Math.min(Math.max(...allPrices), target2x * 1.3);
+        const heatmap = [], solutionLine = [], solutionLine2x = [];
+
+        const interpolateLine = (targetP) => {
+            const line = [];
+            growthRates.forEach((g, i) => {
+                for (let j = 0; j < margins.length - 1; j++) {
+                    const p1 = tableData[i][j], p2 = tableData[i][j+1];
+                    if ((p1 <= targetP && p2 >= targetP) || (p1 >= targetP && p2 <= targetP)) {
+                        if (p2 - p1 !== 0) {
+                            const m = margins[j] + (targetP - p1) * (margins[j+1] - margins[j]) / (p2 - p1);
+                            if (m >= margins[j] && m <= margins[j+1]) { line.push({ x: m*100, y: g*100 }); break; }
+                        }
+                    }
+                }
+            });
+            return line;
+        };
+
+        growthRates.forEach((g, i) => {
+            margins.forEach((m, j) => {
+                const price = tableData[i][j];
+                if (price <= 0) return;
+                const ratio = Math.max(0, Math.min(1, (price - minP) / (maxP - minP)));
+                heatmap.push({ x: m*100, y: g*100, backgroundColor: `hsla(${240*(1-ratio)},80%,60%,0.6)` });
+            });
+        });
+
+        solutionLine.push(...interpolateLine(targetPrice));
+        solutionLine2x.push(...interpolateLine(target2x));
+
+        this.temperatureChartInstance = new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets: [
+                { label: '계산된 주가',          data: heatmap,       pointRadius: 3, pointStyle: 'rect' },
+                { label: `현재주가 (${getCurrencyCfg().formatVPS(targetPrice)})`, data: solutionLine,   type: 'line', borderColor: '#10b981', borderWidth: 3, pointRadius: 0, borderDash: [] },
+                { label: `2배 목표 (${getCurrencyCfg().formatVPS(target2x)})`,   data: solutionLine2x, type: 'line', borderColor: '#f59e0b', borderWidth: 3, pointRadius: 0, borderDash: [6, 3] }
+            ]},
+            options: { responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { labels: { font: { size: 11 } } } },
+                scales: {
+                    x: { title: { display: true, text: '목표 영업이익률 (%)' } },
+                    y: { title: { display: true, text: '초기 고성장률 (%)' } }
+                }
+            }
+        });
+    },
+
+    renderValuationChart(labels, revenue, ebit, fcff) {
+        if (this.valuationChartInstance) this.valuationChartInstance.destroy();
+        const ctx = this.content().querySelector('#valuationChart').getContext('2d');
+        this.valuationChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [
+                { label:'매출액', data: revenue, backgroundColor:'#93c5fd' },
+                { label:'EBIT',   data: ebit,    backgroundColor:'#6ee7b7' },
+                { label:'FCFF',   data: fcff, type:'line', borderColor:'#ef4444', tension:0.3 }
+            ]},
+            options: { responsive:true, maintainAspectRatio:false }
+        });
+    },
+
+    // --- Result Display (FIX: 고대비 색상 – 흰 배경에 맞게 수정) ---
+    displayResults(inputs, pvFcffSum, pvTerminal, final) {
+        const c = this.content();
+        const cfg = getCurrencyCfg();
+        c.querySelector('#resultCompanyName').textContent = inputs.companyName;
+        const summary = c.querySelector('#valuation-summary');
+        const details = c.querySelector('#result-details');
+
+        summary.innerHTML = `
+            <p class="text-4xl font-extrabold text-slate-900 mb-2">
+                ${cfg.formatVPS(final.vps)}
+            </p>
+            <p class="text-xs text-slate-500">주당 내재가치 (per share)</p>`;
+
+        details.classList.remove('hidden');
+        details.innerHTML = `
+            <div class="flex justify-between"><span class="text-slate-600">영업가치</span><span class="font-bold text-slate-900">${cfg.formatAmount(final.opAsset)}</span></div>
+            <div class="flex justify-between pl-2 text-xs text-slate-500"><span>ㄴ고성장현가</span><span>${cfg.formatAmount(pvFcffSum)}</span></div>
+            <div class="flex justify-between pl-2 text-xs text-slate-500"><span>ㄴ영구현가</span><span>${cfg.formatAmount(pvTerminal)}</span></div>
+            <div class="flex justify-between border-t border-slate-200 pt-2"><span class="text-slate-600">순자산조정</span><span class="font-bold text-amber-600">${cfg.formatAmount(inputs.cashAndEquivalents + final.reflected - inputs.interestBearingDebt)}</span></div>
+            <div class="flex justify-between border-t border-slate-200 pt-2 font-bold text-lg"><span class="text-slate-700">주주가치</span><span class="text-slate-900">${cfg.formatAmount(final.equity)}</span></div>`;
+
+        // 텔레그램 전송 (설정된 경우)
+        const appLabel = (typeof App2 !== 'undefined' && this === App2) ? 'SOTP' : 'DCF';
+        Utils.sendToTelegram(Utils.buildDcfMsg(appLabel, inputs, pvFcffSum, pvTerminal, final));
+    },
+
+    displayFormulas(inputs, final) {
+        const cfg = getCurrencyCfg();
+        const container = this.content().querySelector('#formula-details');
+        container.innerHTML = `<h4 class="font-bold mb-2">산출 요약</h4>
+            <p>영업가치(${cfg.formatAmount(final.opAsset)}) + 비영업자산(${cfg.formatAmount(final.reflected)}) + 현금(${cfg.formatAmount(inputs.cashAndEquivalents)}) − 부채(${cfg.formatAmount(inputs.interestBearingDebt)}) = <strong>자기자본가치 ${cfg.formatAmount(final.equity)}</strong></p>
+            <p class="mt-2 text-slate-500 text-xs">법인세율: ${(TAX_RATE*100).toFixed(1)}%  |  수렴연도: ${MARGIN_CONVERGENCE_YEAR}년차  |  단위: ${cfg.unitLabel}</p>`;
+    },
+
+    // --- PNG Save: 입력값 전체 포함, 버튼 행만 숨김 ---
+    handleSaveAsPng() {
+        const c = this.content();
+        const target = c.querySelector('#printable-area');
+        const fname  = (this.getAllInputs().companyName || 'valuation').replace(/\s+/g,'_') + '.png';
+
+        // 버튼 행만 일시적으로 숨김 (입력 카드는 그대로 유지)
+        const calcBtn = c.querySelector('#calculate-btn');
+        const btnRow  = calcBtn ? calcBtn.closest('div.flex') : null;
+        if (btnRow) btnRow.style.display = 'none';
+
+        if (this.valuationChartInstance)   { this.valuationChartInstance.options.animation   = false; this.valuationChartInstance.update(); }
+        if (this.temperatureChartInstance) { this.temperatureChartInstance.options.animation = false; this.temperatureChartInstance.update(); }
+
+        html2canvas(target, { scale: 2, useCORS: true, backgroundColor: '#f8fafc' })
+            .then(canvas => {
+                const a = document.createElement('a');
+                a.download = fname; a.href = canvas.toDataURL('image/png'); a.click(); a.remove();
+            })
+            .catch(err => console.error('PNG 저장 실패:', err))
+            .finally(() => {
+                if (btnRow) btnRow.style.display = '';
+                if (this.valuationChartInstance)   { this.valuationChartInstance.options.animation   = {}; this.valuationChartInstance.update(); }
+                if (this.temperatureChartInstance) { this.temperatureChartInstance.options.animation = {}; this.temperatureChartInstance.update(); }
+            });
+    }
+};
+
+// ============================================================
+// APP 2 – SOTP (Sum-of-the-Parts)
+// ============================================================
+const App2 = {
+    segmentCount: 0,
+    valuationChartInstance: null,
+    LS_KEY: 'dcf_app2_v1',
+
+    init() {
+        for (const k in this) if (typeof this[k] === 'function') this[k] = this[k].bind(this);
+        this.addEventListeners();
+        this.setupApp();
+    },
+
+    // FIX: 모든 DOM 쿼리를 app-content 범위 내로 제한
+    content() { return document.getElementById('app-content'); },
+    formatNum: (v, d = 0) => Utils.formatNum(v, d),
+
+    addEventListeners() {
+        const c = this.content();
+        c.querySelector('#calculate-btn').addEventListener('click', this.handleCalculation);
+        c.querySelector('#save-png-btn').addEventListener('click', this.handleSaveAsPng);
+        c.querySelector('#companyName').addEventListener('input', this.updateCompanyName);
+        c.querySelectorAll('input[name="assumption_method"]').forEach(r => r.addEventListener('change', this.toggleAssumptionMethod));
+        c.querySelector('#add-segment-btn').addEventListener('click', this.addSegment);
+        c.querySelectorAll('input[name="margin_method"]').forEach(r => r.addEventListener('change', this.updateAllSegmentProjections));
+        c.querySelector('#industry').addEventListener('change', (e) => { if (e.target.value) c.querySelector('#salesToCapital').value = e.target.value; });
+        c.querySelectorAll('input[name="reinvestment_method"]').forEach(r => r.addEventListener('change', this.toggleReinvestmentInputs));
+        c.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', (e) => {
+            c.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            c.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            c.querySelector('#' + e.target.dataset.tab).classList.remove('hidden');
+        }));
+        c.querySelector('#baseRevenue').addEventListener('input', this.updateBaseMargin);
+        c.querySelector('#baseOperatingIncome').addEventListener('input', this.updateBaseMargin);
+        c.querySelector('#growthPeriod').addEventListener('input', () => { this.updateSegmentDisplayInfo(); this.updateAllSegmentProjections(); });
+        c.querySelectorAll('input[name="margin_period"]').forEach(r => r.addEventListener('change', () => { this.updateSegmentDisplayInfo(); this.updateAllSegmentProjections(); }));
+        c.querySelector('#targetMargin_seg_con').addEventListener('input', this.updateAllSegmentProjections);
+        // Currency toggle
+        c.querySelectorAll('input[name="currency_mode"]').forEach(r => r.addEventListener('change', (e) => {
+            CURRENCY_MODE = e.target.value;
+            const cfg = getCurrencyCfg();
+            c.querySelectorAll('.unit-fin').forEach(el => el.textContent = cfg.unitLabel);
+            c.querySelectorAll('.segment-rev-label').forEach(el => el.textContent = `매출액 (${cfg.unitLabel})`);
+            c.querySelectorAll('.segment-proj-unit').forEach(el => el.textContent = CURRENCY_MODE === 'USD' ? 'M' : '억');
+            const sharesInput = c.querySelector('#outstandingShares');
+            if (sharesInput) {
+                sharesInput.placeholder = cfg.sharesPlaceholder;
+                const hint = c.querySelector('.shares-hint');
+                if (hint) hint.textContent = cfg.sharesHint;
+            }
+        }));
+    },
+
+    setupApp() {
+        const c = this.content();
+        const sel = c.querySelector('#industry');
+        sel.innerHTML = '<option value="">산업군 선택...</option>';
+        Object.entries(damodaranSCRatios).sort((a,b) => a[0].localeCompare(b[0])).forEach(([name, ratio]) => {
+            const o = document.createElement('option');
+            o.value = ratio; o.textContent = `${name} (${ratio})`;
+            if (name === 'Total Market') o.selected = true;
+            sel.appendChild(o);
+        });
+        sel.dispatchEvent(new Event('change'));
+        this.updateCompanyName();
+        this.toggleAssumptionMethod();
+        this.updateSegmentDisplayInfo();
+        this.updateBaseMargin();
+        this.setupDetailSection('debt');
+        this.setupDetailSection('cash');
+        this.setupDetailSection('nonOp');
+        this.toggleReinvestmentInputs();
+    },
+
+    setupDetailSection(type) {
+        const c = this.content();
+        c.querySelector(`#add-${type}-detail-btn`).addEventListener('click', () => this.addDetailItem(type));
+        this.addDetailItem(type, true);
+    },
+
+    addDetailItem(type, isInitial = false) {
+        const c = this.content();
+        const template  = c.querySelector('#detail-item-template') || document.getElementById('detail-item-template');
+        const container = c.querySelector(`#${type}-details-container`);
+        const clone = template.content.cloneNode(true);
+        if (isInitial && container.children.length === 0) {
+            const mainId = type === 'debt' ? 'interestBearingDebt' : type === 'cash' ? 'cashAndEquivalents' : 'nonOperatingAssets';
+            clone.querySelector('.detail-item-name').value  = '기본 항목';
+            clone.querySelector('.detail-item-value').value = c.querySelector('#'+mainId).value || 0;
+        }
+        container.appendChild(clone);
+        const row = container.lastElementChild;
+        row.querySelector('.delete-detail-btn').addEventListener('click', (e) => { e.target.closest('.detail-item-row').remove(); this.updateTotal(type); });
+        row.querySelector('.detail-item-value').addEventListener('input', () => this.updateTotal(type));
+        this.updateTotal(type);
+    },
+
+    updateTotal(type) {
+        const c = this.content();
+        const mainId = type === 'debt' ? 'interestBearingDebt' : type === 'cash' ? 'cashAndEquivalents' : 'nonOperatingAssets';
+        let total = 0;
+        c.querySelectorAll(`#${type}-details-container .detail-item-value`).forEach(inp => { total += parseFloat(inp.value) || 0; });
+        c.querySelector('#' + mainId).value = total;
+    },
+
+    showModal(title, body) {
+        const c = this.content();
+        const modal = c.querySelector('#custom-modal');
+        modal.querySelector('#modal-title').textContent = title;
+        modal.querySelector('#modal-body').textContent  = body;
+        modal.querySelector('#modal-ok-btn').onclick = () => modal.classList.add('hidden');
+        modal.classList.remove('hidden');
+    },
+
+    toggleAssumptionMethod() {
+        const c = this.content();
+        const method = c.querySelector('input[name="assumption_method"]:checked').value;
+        c.querySelector('#standard-mode-container').classList.toggle('hidden', method !== 'standard');
+        c.querySelector('#segment-mode-container').classList.toggle('hidden', method !== 'segment');
+        const revField = c.querySelector('#baseRevenue');
+        revField.readOnly = (method === 'segment');
+        revField.classList.toggle('input-readonly', method === 'segment');
+        if (method === 'segment') {
+            if (c.querySelectorAll('.segment-block').length === 0) this.addSegment();
+            this.updateFromSegments();
+        }
+    },
+
+    addSegment() {
+        this.segmentCount++;
+        const c = this.content();
+        const template = c.querySelector('#segment-template') || document.getElementById('segment-template');
+        const clone = template.content.cloneNode(true);
+        clone.querySelectorAll('input[name="growth_projection_method"]').forEach(r => { r.name = `growth_projection_method_${this.segmentCount}`; });
+        c.querySelector('#segments-container').appendChild(clone);
+        const seg = c.querySelector('#segments-container .segment-block:last-child');
+        seg.querySelector('.delete-segment-btn').addEventListener('click', (e) => { e.target.closest('.segment-block').remove(); this.updateFromSegments(); });
+        seg.addEventListener('input', (e) => {
+            if (e.target.classList.contains('input-field')) {
+                if (e.target.closest('.ms-projection-input')) this.handleMsInputChange(e);
+                this.calculateAndDisplaySegmentProjections(seg);
+                this.updateFromSegments();
+            }
+        });
+        seg.addEventListener('change', (e) => {
+            if (e.target.type === 'radio' && e.target.name.startsWith('growth_projection_method')) {
+                this.handleGrowthProjectionChange(e);
+                this.calculateAndDisplaySegmentProjections(seg);
+                this.updateFromSegments();
+            }
+        });
+        this.toggleSegmentMarginInputs();
+        this.calculateAndDisplaySegmentProjections(seg);
+    },
+
+    handleGrowthProjectionChange(e) {
+        const seg = e.target.closest('.segment-block');
+        seg.querySelector('.direct-growth-input').classList.toggle('hidden', e.target.value !== 'direct');
+        seg.querySelector('.ms-projection-input').classList.toggle('hidden', e.target.value !== 'ms');
+    },
+
+    handleMsInputChange(e) {
+        const seg = e.target.closest('.segment-block');
+        const baseRev = parseFloat(seg.querySelector('.segment-baseRevenue').value) || 0;
+        const curMkt  = parseFloat(seg.querySelector('.segment-currentMarketSize').value) || 0;
+        const tgtMkt  = parseFloat(seg.querySelector('.segment-targetMarketSize').value) || 0;
+        const tgtMs   = parseFloat(seg.querySelector('.segment-targetMs').value) / 100 || 0;
+        seg.querySelector('.segment-currentMs').value = curMkt > 0 ? `${((baseRev/curMkt)*100).toFixed(2)}%` : 'N/A';
+        if (baseRev > 0 && tgtMkt > 0 && tgtMs > 0) {
+            const cagr = Math.pow((tgtMkt * tgtMs) / baseRev, 1/5) - 1;
+            seg.querySelector('.segment-cagr').value = `${(cagr*100).toFixed(2)}%`;
+        } else { seg.querySelector('.segment-cagr').value = 'N/A'; }
+    },
+
+    // FIX: content() 스코프 사용
+    toggleSegmentMarginInputs() {
+        const c = this.content();
+        const isCon = c.querySelector('input[name="margin_method"]:checked').value === 'consolidated';
+        c.querySelector('#segment-consolidated-margin-inputs').classList.toggle('hidden', !isCon);
+        const oi = c.querySelector('#baseOperatingIncome');
+        oi.readOnly = !isCon;
+        oi.classList.toggle('input-readonly', !isCon);
+        c.querySelectorAll('.segment-block').forEach(el => {
+            el.querySelector('.segment-baseMargin-container').classList.toggle('hidden', isCon);
+            el.querySelector('.segment-target-margin-input').classList.toggle('hidden', isCon);
+            el.querySelector('.segment-projected-oi-container').classList.toggle('hidden', isCon);
+        });
+    },
+
+    // FIX: content() 스코프 사용
+    updateFromSegments() {
+        const c = this.content();
+        let totRev = 0, totOI = 0;
+        const marginMethod = c.querySelector('input[name="margin_method"]:checked').value;
+        c.querySelectorAll('.segment-block').forEach(el => {
+            const rev = parseFloat(el.querySelector('.segment-baseRevenue').value) || 0;
+            totRev += rev;
+            if (marginMethod === 'segment_specific') totOI += rev * (parseFloat(el.querySelector('.segment-baseMargin').value) / 100 || 0);
+        });
+        c.querySelector('#baseRevenue').value = totRev.toFixed(0);
+        if (marginMethod === 'segment_specific') c.querySelector('#baseOperatingIncome').value = totOI.toFixed(0);
+        this.updateBaseMargin();
+    },
+
+    updateSegmentDisplayInfo() {
+        const c = this.content();
+        const gp = c.querySelector('#growthPeriod').value;
+        const mp = c.querySelector('input[name="margin_period"]:checked').value;
+        c.querySelector('#segment-growth-period-display').textContent = gp;
+        c.querySelector('#segment-margin-period-display').textContent = mp === '5' ? '5년차 도달' : '선형 증가';
+    },
+
+    updateAllSegmentProjections() {
+        const c = this.content();
+        this.toggleSegmentMarginInputs();
+        c.querySelectorAll('.segment-block').forEach(el => this.calculateAndDisplaySegmentProjections(el));
+        this.updateFromSegments();
+    },
+
+    // FIX: content() 스코프 사용
+    calculateAndDisplaySegmentProjections(segEl) {
+        const c = this.content();
+        const gp = parseInt(c.querySelector('#growthPeriod').value) || 0;
+        const mpSetting   = c.querySelector('input[name="margin_period"]:checked').value;
+        const marginMethod = c.querySelector('input[name="margin_method"]:checked').value;
+        const baseRev  = parseFloat(segEl.querySelector('.segment-baseRevenue').value) || 0;
+        const baseMarg = parseFloat(segEl.querySelector('.segment-baseMargin').value) / 100 || 0;
+        let hgr = 0;
+        if (segEl.querySelector('input[name^="growth_projection_method"]:checked').value === 'direct') {
+            hgr = parseFloat(segEl.querySelector('.segment-highGrowthRate').value) / 100 || 0;
+        } else {
+            hgr = parseFloat(segEl.querySelector('.segment-cagr').value.replace('%','')) / 100 || 0;
+        }
+        const tgtMarg = marginMethod === 'segment_specific'
+            ? (parseFloat(segEl.querySelector('.segment-targetMargin').value) / 100 || 0)
+            : (parseFloat(c.querySelector('#targetMargin_seg_con').value) / 100 || 0);
+
+        const projRev5 = baseRev * Math.pow(1 + hgr, 5);
+        let projMarg5;
+        if (mpSetting === '5' && gp > MARGIN_CONVERGENCE_YEAR) {
+            projMarg5 = baseMarg + (tgtMarg - baseMarg) / MARGIN_CONVERGENCE_YEAR * MARGIN_CONVERGENCE_YEAR;
+        } else {
+            const step = gp > 0 ? (tgtMarg - baseMarg) / gp : 0;
+            projMarg5 = baseMarg + step * Math.min(5, gp);
+        }
+        projMarg5 = Math.min(projMarg5, tgtMarg);
+        segEl.querySelector('.segment-projected-revenue').value = this.formatNum(projRev5, 0);
+        segEl.querySelector('.segment-projected-oi').value      = this.formatNum(projRev5 * projMarg5, 0);
+    },
+
+    updateCompanyName() {
+        const c = this.content();
+        const name = c.querySelector('#companyName').value;
+        c.querySelector('#displayCompanyName').textContent = name ? `${name} SOTP Valuation` : 'SOTP Valuation';
+    },
+
+    updateBaseMargin() {
+        const c = this.content();
+        const rev = parseFloat(c.querySelector('#baseRevenue').value) || 0;
+        const oi  = parseFloat(c.querySelector('#baseOperatingIncome').value) || 0;
+        const el  = c.querySelector('#baseMargin');
+        if (el) el.value = rev > 0 ? ((oi/rev)*100).toFixed(2) : 'N/A';
+    },
+
+    toggleReinvestmentInputs() {
+        const c = this.content();
+        const m = c.querySelector('input[name="reinvestment_method"]:checked').value;
+        c.querySelector('#sc_ratio_inputs').classList.toggle('hidden', m !== 'sc_ratio');
+        c.querySelector('#reinvestment_rate_inputs').classList.toggle('hidden', m !== 'reinvestment_rate');
+    },
+
+    // FIX: content() 스코프 사용
+    getAllInputs() {
+        const c = this.content();
+        const method = c.querySelector('input[name="assumption_method"]:checked').value;
+        let inputs = {};
+
+        if (method === 'standard') {
+            inputs = {
+                baseRevenue:          parseFloat(c.querySelector('#baseRevenue').value) || 0,
+                baseOperatingIncome:  parseFloat(c.querySelector('#baseOperatingIncome').value) || 0,
+                highGrowthRate:       parseFloat(c.querySelector('#highGrowthRate_std').value) / 100 || 0,
+                targetMargin:         parseFloat(c.querySelector('#targetMargin_std').value) / 100 || 0,
+                segments: []
+            };
+        } else {
+            const segs = [];
+            let totRev = 0;
+            c.querySelectorAll('.segment-block').forEach(el => {
+                const rev = parseFloat(el.querySelector('.segment-baseRevenue').value) || 0;
+                totRev += rev;
+                const gr = el.querySelector('input[name^="growth_projection_method"]:checked').value === 'direct'
+                    ? (parseFloat(el.querySelector('.segment-highGrowthRate').value) / 100 || 0)
+                    : (parseFloat(el.querySelector('.segment-cagr').value.replace('%','')) / 100 || 0);
+                segs.push({
+                    name: el.querySelector('.segment-name').value,
+                    baseRevenue:    rev,
+                    baseMargin:     parseFloat(el.querySelector('.segment-baseMargin').value) / 100 || 0,
+                    highGrowthRate: gr,
+                    targetMargin:   parseFloat(el.querySelector('.segment-targetMargin').value) / 100 || 0
+                });
+            });
+            inputs.baseRevenue = totRev;
+            inputs.segments = segs;
+            const marginMethod = c.querySelector('input[name="margin_method"]:checked').value;
+            if (marginMethod === 'consolidated') {
+                inputs.baseOperatingIncome = parseFloat(c.querySelector('#baseOperatingIncome').value) || 0;
+                inputs.targetMargin = parseFloat(c.querySelector('#targetMargin_seg_con').value) / 100 || 0;
+            } else {
+                let totOI = 0, wTgt = 0, totEndRev = 0;
+                const gp = parseInt(c.querySelector('#growthPeriod').value) || 0;
+                const tgr = parseFloat(c.querySelector('#terminalGrowthRate').value) / 100 || 0;
+                segs.forEach(seg => {
+                    totOI += seg.baseRevenue * seg.baseMargin;
+                    let er = seg.baseRevenue, dgr = seg.highGrowthRate;
+                    const ds = gp > MARGIN_CONVERGENCE_YEAR ? (dgr - tgr) / (gp - MARGIN_CONVERGENCE_YEAR) : 0;
+                    for (let i = 1; i <= gp; i++) {
+                        if (i > MARGIN_CONVERGENCE_YEAR) dgr -= ds;
+                        er *= (1 + Math.max(dgr, tgr));
+                    }
+                    totEndRev += er; wTgt += er * seg.targetMargin;
+                });
+                inputs.baseOperatingIncome = totOI;
+                inputs.targetMargin = totEndRev > 0 ? wTgt / totEndRev : 0;
+            }
+        }
+
+        return {
+            ...inputs,
+            companyName:           c.querySelector('#companyName').value || 'N/A',
+            model:                 c.querySelector('input[name="valuation_model"]:checked').value,
+            assumptionMethod:      method,
+            growthPeriod:          parseInt(c.querySelector('#growthPeriod').value) || 0,
+            marginPeriod:          c.querySelector('input[name="margin_period"]:checked').value,
+            terminalGrowthRate:    parseFloat(c.querySelector('#terminalGrowthRate').value) / 100 || 0,
+            reinvMethod:           c.querySelector('input[name="reinvestment_method"]:checked').value,
+            salesToCapital:        parseFloat(c.querySelector('#salesToCapital').value) || 0,
+            reinvestmentRate:      parseFloat(c.querySelector('#reinvestmentRate').value) / 100 || 0,
+            highGrowthWacc:        parseFloat(c.querySelector('#highGrowthWacc').value) / 100 || 0,
+            terminalWacc:          parseFloat(c.querySelector('#terminalWacc').value) / 100 || 0,
+            interestBearingDebt:   parseFloat(c.querySelector('#interestBearingDebt').value) || 0,
+            cashAndEquivalents:    parseFloat(c.querySelector('#cashAndEquivalents').value) || 0,
+            nonOperatingAssets:    parseFloat(c.querySelector('#nonOperatingAssets').value) || 0,
+            nonOpAssetReflectionRate: parseFloat(c.querySelector('#nonOpAssetReflectionRate').value) / 100 || 0,
+            outstandingShares:     parseFloat(c.querySelector('#outstandingShares').value) || 0,
+        };
+    },
+
+    handleCalculation() {
+        const c = this.content();
+        const btn = c.querySelector('#calculate-btn');
+        Utils.withLoadingBtn(btn, () => this.runValuation());
+    },
+
+    runValuation() {
+        const inputs = this.getAllInputs();
+        if (inputs.outstandingShares === 0 || inputs.terminalWacc <= inputs.terminalGrowthRate) {
+            this.showModal('입력 오류', '필수 입력값이 0이거나, 영속기 할인율이 영구성장률보다 낮거나 같습니다.'); return;
+        }
+
+        const c = this.content();
+        let cumPV = 0, pvTV = 0, opAsset = 0;
+        const cashflowCont = c.querySelector('#cashflow-details .overflow-x-auto');
+        cashflowCont.innerHTML = '';
+        const chartLabels = ['기준'], revData = [inputs.baseRevenue], oiData = [inputs.baseOperatingIncome], fcffData = [0];
+
+        if (inputs.model === 'high_growth') {
+            let lastRev = inputs.baseRevenue;
+            const baseMargin = inputs.baseRevenue > 0 ? inputs.baseOperatingIncome / inputs.baseRevenue : 0;
+            const segDetails = inputs.segments.map(s => ({ ...s, currentRevenue: s.baseRevenue }));
+
+            let tblHTML = `<table class="w-full custom-table"><thead><tr>
+                <th rowspan="2">연도</th><th colspan="5" class="text-center border-l">전사 합계</th>
+                ${inputs.assumptionMethod === 'segment' ? inputs.segments.map(s => `<th colspan="3" class="text-center border-l">${s.name}</th>`).join('') : ''}
+                </tr><tr>
+                <th class="border-l">매출</th><th>성장률</th><th>영업이익</th><th>이익률</th><th>FCFF</th>
+                ${inputs.assumptionMethod === 'segment' ? inputs.segments.map(() => '<th class="border-l">매출</th><th>영업이익</th><th>이익률</th>').join('') : ''}
+                </tr></thead><tbody>`;
+
+            for (let i = 1; i <= inputs.growthPeriod; i++) {
+                let yearRev = 0, yearOI = 0;
+                const yearSegs = [];
+
+                if (inputs.assumptionMethod === 'segment' && inputs.segments.length > 0) {
+                    const marginMethod = c.querySelector('input[name="margin_method"]:checked').value;
+                    segDetails.forEach(seg => {
+                        let dgr = seg.highGrowthRate;
+                        if (i > MARGIN_CONVERGENCE_YEAR && inputs.growthPeriod > MARGIN_CONVERGENCE_YEAR)
+                            dgr -= ((seg.highGrowthRate - inputs.terminalGrowthRate) / (inputs.growthPeriod - MARGIN_CONVERGENCE_YEAR)) * (i - MARGIN_CONVERGENCE_YEAR);
+                        seg.currentRevenue *= (1 + Math.max(dgr, inputs.terminalGrowthRate));
+                        const tgtMarg = marginMethod === 'segment_specific' ? seg.targetMargin : inputs.targetMargin;
+                        let sm;
+                        if (inputs.marginPeriod === '5' && inputs.growthPeriod > MARGIN_CONVERGENCE_YEAR)
+                            sm = i <= MARGIN_CONVERGENCE_YEAR ? seg.baseMargin + (tgtMarg - seg.baseMargin) / MARGIN_CONVERGENCE_YEAR * i : tgtMarg;
+                        else sm = seg.baseMargin + (inputs.growthPeriod > 0 ? (tgtMarg - seg.baseMargin) / inputs.growthPeriod : 0) * i;
+                        sm = Math.min(sm, tgtMarg);
+                        const segOI = seg.currentRevenue * sm;
+                        yearRev += seg.currentRevenue; yearOI += segOI;
+                        yearSegs.push({ revenue: seg.currentRevenue, opIncome: segOI, margin: sm });
+                    });
+                } else {
+                    let dgr = inputs.highGrowthRate;
+                    if (i > MARGIN_CONVERGENCE_YEAR && inputs.growthPeriod > MARGIN_CONVERGENCE_YEAR)
+                        dgr -= ((inputs.highGrowthRate - inputs.terminalGrowthRate) / (inputs.growthPeriod - MARGIN_CONVERGENCE_YEAR)) * (i - MARGIN_CONVERGENCE_YEAR);
+                    yearRev = lastRev * (1 + Math.max(dgr, inputs.terminalGrowthRate));
+                    let cm;
+                    if (inputs.marginPeriod === '5' && inputs.growthPeriod > MARGIN_CONVERGENCE_YEAR)
+                        cm = i <= MARGIN_CONVERGENCE_YEAR ? baseMargin + (inputs.targetMargin - baseMargin) / MARGIN_CONVERGENCE_YEAR * i : inputs.targetMargin;
+                    else cm = baseMargin + (inputs.growthPeriod > 0 ? (inputs.targetMargin - baseMargin) / inputs.growthPeriod : 0) * i;
+                    yearOI = yearRev * Math.min(cm, inputs.targetMargin);
+                }
+
+                const oiAT = yearOI * (1 - TAX_RATE);
+                const reinv = inputs.reinvMethod === 'sc_ratio'
+                    ? (yearRev - lastRev) / inputs.salesToCapital
+                    : oiAT * inputs.reinvestmentRate;
+                const fcff = oiAT - reinv;
+                cumPV += fcff / Math.pow(1 + inputs.highGrowthWacc, i);
+                chartLabels.push(`${i}년`); revData.push(yearRev); oiData.push(yearOI); fcffData.push(fcff);
+
+                tblHTML += `<tr>
+                    <td>${i}</td>
+                    <td class="border-l">${this.formatNum(yearRev)}</td>
+                    <td class="text-teal-600">${this.formatNum(lastRev > 0 ? (yearRev/lastRev-1)*100 : 0, 2)}%</td>
+                    <td>${this.formatNum(yearOI)}</td>
+                    <td>${this.formatNum(yearRev > 0 ? yearOI/yearRev*100 : 0, 2)}%</td>
+                    <td class="font-bold">${this.formatNum(fcff)}</td>
+                    ${inputs.assumptionMethod === 'segment' ? yearSegs.map(d => `<td class="border-l">${this.formatNum(d.revenue)}</td><td>${this.formatNum(d.opIncome)}</td><td>${this.formatNum(d.margin*100,2)}%</td>`).join('') : ''}
+                </tr>`;
+                lastRev = yearRev;
+            }
+            cashflowCont.innerHTML = tblHTML + '</tbody></table>';
+
+            const tRev1 = lastRev * (1 + inputs.terminalGrowthRate);
+            const tOI = tRev1 * inputs.targetMargin;
+            const tOIAT = tOI * (1 - TAX_RATE);
+            const tFCFF = tOIAT * (1 - inputs.terminalGrowthRate / inputs.terminalWacc);
+            const tv = tFCFF / (inputs.terminalWacc - inputs.terminalGrowthRate);
+            pvTV = tv / Math.pow(1 + inputs.highGrowthWacc, inputs.growthPeriod);
+            opAsset = cumPV + pvTV;
+        } else {
+            const tOI = inputs.baseOperatingIncome * (1 + inputs.terminalGrowthRate);
+            const tOIAT = tOI * (1 - TAX_RATE);
+            const tFCFF = tOIAT * (1 - inputs.terminalGrowthRate / inputs.terminalWacc);
+            opAsset = tFCFF / (inputs.terminalWacc - inputs.terminalGrowthRate);
+            pvTV = opAsset;
+            cashflowCont.innerHTML = '<p class="text-center text-slate-500 p-4">영구성장 모델은 상세 현금흐름표를 제공하지 않습니다.</p>';
+        }
+
+        const reflected = inputs.nonOperatingAssets * inputs.nonOpAssetReflectionRate;
+        const equity = opAsset - inputs.interestBearingDebt + inputs.cashAndEquivalents + reflected;
+        const vps = equity * getCurrencyCfg().multiplier / inputs.outstandingShares;
+        const final = { opAsset, equity, vps, reflected };
+
+        // FIX: bind(this) 명시 – App1의 동일 메서드를 App2 컨텍스트로 실행
+        this.displayResults(inputs, cumPV, pvTV, final);
+        this.displayFormulas(inputs, final);
+        if (inputs.model === 'high_growth') this.renderValuationChart(chartLabels, revData, oiData, fcffData);
+        c.querySelector('#details-section').classList.remove('hidden');
+    },
+
+    // FIX: App1과 공유하되 bind(App2) 적용 (init()에서 처리)
+    renderValuationChart: App1.renderValuationChart,
+    displayResults:        App1.displayResults,
+    displayFormulas:       App1.displayFormulas,
+
+    // FIX: finally로 폼 복원 보장
+    handleSaveAsPng: App1.handleSaveAsPng
+};
+
+// ============================================================
+// APP 3 – Damodaran Breakeven (Vanilla JS, React 불필요)
+// ============================================================
+const App3 = {
+    init() {
+        // 모든 입력 필드에 실시간 계산 연결
+        const c = document.getElementById('app-content');
+        const inputIds = ['a3_companyName','a3_marketCap','a3_currentRevenue',
+                          'a3_rf','a3_erp','a3_beta','a3_stableGrowth',
+                          'a3_targetMargin','a3_targetROE','a3_years',
+                          'a3_cashYield','a3_expectedCAGR'];
+        inputIds.forEach(id => {
+            const el = c.querySelector('#' + id);
+            if (el) el.addEventListener('input', () => this.calculate());
+        });
+        // 기업명 → 제목 반영
+        c.querySelector('#a3_companyName').addEventListener('input', () => {
+            const name = c.querySelector('#a3_companyName').value;
+            c.querySelector('#a3-title').textContent = name ? `${name} Breakeven Analysis` : 'Damodaran Breakeven Model';
+        });
+        // 통화 단위 변경
+        c.querySelectorAll('input[name="currency_mode"]').forEach(r => r.addEventListener('change', (e) => {
+            CURRENCY_MODE = e.target.value;
+            c.querySelectorAll('.unit-fin').forEach(el => el.textContent = getCurrencyCfg().unitLabel);
+            this.calculate();
+        }));
+        // 인쇄
+        c.querySelector('#a3_printBtn').addEventListener('click', () => {
+            const name = c.querySelector('#a3_companyName').value || 'Model';
+            const orig = document.title;
+            document.title = `Damodaran_${name}`;
+            window.print();
+            setTimeout(() => { document.title = orig; }, 500);
+        });
+        // 초기 계산
+        this.calculate();
+    },
+
+    num(id)  { return parseFloat(document.getElementById('app-content').querySelector('#'+id).value) || 0; },
+    setText(id, val) { const el = document.getElementById('app-content').querySelector('#'+id); if (el) el.textContent = val; },
+    setStyle(id, prop, val) { const el = document.getElementById('app-content').querySelector('#'+id); if (el) el.style[prop] = val; },
+
+    fmtPct(n)   { return (n * 100).toFixed(2) + '%'; },
+    fmtMoney(n) { return getCurrencyCfg().formatMoney(n); },
+    fmtX(n)     { return isFinite(n) ? n.toFixed(1) + 'x' : '–'; },
+
+    calculate() {
+        const c = document.getElementById('app-content');
+        const marketCap     = this.num('a3_marketCap');
+        const currentRev    = this.num('a3_currentRevenue');
+        const rf            = this.num('a3_rf')           / 100;
+        const erp           = this.num('a3_erp')          / 100;
+        const beta          = this.num('a3_beta');
+        const g             = this.num('a3_stableGrowth') / 100;
+        const margin        = this.num('a3_targetMargin') / 100;
+        const roe           = this.num('a3_targetROE')    / 100;
+        const years         = this.num('a3_years');
+        const cashYield     = this.num('a3_cashYield')    / 100;
+        const expectedCAGR  = this.num('a3_expectedCAGR') / 100;
+
+        // --- Core Calculations ---
+        const ke = rf + beta * erp;
+        this.setText('a3_ke_display', this.fmtPct(ke));
+
+        // Validate
+        const errorPanel  = c.querySelector('#a3_errorPanel');
+        const resultPanel = c.querySelector('#a3_resultPanel');
+        let errorMsg = null;
+        if (roe <= 0)   errorMsg = 'ROE는 0보다 커야 합니다.';
+        if (ke <= g)    errorMsg = 'Ke ≤ g : 자본비용이 영구성장률보다 낮으면 가치가 무한대가 됩니다.';
+        const rr = roe > 0 ? g / roe : 999;
+        if (rr > 1)     errorMsg = `재투자율(${this.fmtPct(rr)}) > 100% : ROE 또는 성장률을 조정하세요.`;
+
+        if (errorMsg) {
+            errorPanel.classList.remove('hidden');
+            resultPanel.classList.add('opacity-30');
+            c.querySelector('#a3_errorMsg').textContent = errorMsg;
+            return;
+        }
+        errorPanel.classList.add('hidden');
+        resultPanel.classList.remove('opacity-30');
+
+        const pr = 1 - rr;
+        const denom = ke - g;
+        const ps = denom > 0 ? (margin * pr) / denom : 0;
+
+        // 미래 시총 (투자자가 요구하는 수익률로 성장)
+        const compoundFactor = Math.pow(1 + ke - cashYield, years);
+        const futureMC       = marketCap * compoundFactor;
+
+        // Breakeven Revenue
+        const breakevenRev = ps > 0 ? futureMC / ps : 0;
+        const reqCAGR      = currentRev > 0 && breakevenRev > 0 ? Math.pow(breakevenRev / currentRev, 1 / years) - 1 : 0;
+        const mult         = currentRev > 0 ? breakevenRev / currentRev : 0;
+
+        // Reverse Valuation
+        const impliedFutureRev = currentRev * Math.pow(1 + expectedCAGR, years);
+        const impliedFutureMC  = impliedFutureRev * ps;
+        const impliedCurrentMC = impliedFutureMC / compoundFactor;
+        const upside           = marketCap > 0 ? (impliedCurrentMC / marketCap) - 1 : 0;
+
+        // --- Update Result Panel ---
+        this.setText('a3_breakevenRev', this.fmtMoney(breakevenRev));
+        c.querySelector('#a3_breakevenSub').textContent = `시총 ${this.fmtMoney(marketCap)} 정당화 매출 (${getCurrencyCfg().unitLabel})`;
+
+        // 필요 성장률
+        const reqEl = c.querySelector('#a3_reqCAGR');
+        reqEl.textContent = this.fmtPct(reqCAGR);
+        reqEl.style.fontWeight = reqCAGR > 0.3 ? '700' : '500';
+        reqEl.style.color      = reqCAGR > 0.3 ? '#059669' : '#1e293b';
+        c.querySelector('#a3_reqCAGR_sub').textContent = `${years}년간 연평균`;
+
+        this.setText('a3_mult', `${mult.toFixed(1)} 배`);
+
+        // Reverse
+        this.setText('a3_implMC', this.fmtMoney(impliedCurrentMC));
+        c.querySelector('#a3_implMC_sub').textContent = `CAGR ${this.fmtPct(expectedCAGR)} 가정 시`;
+
+        const upsideEl = c.querySelector('#a3_upside');
+        upsideEl.textContent = (upside > 0 ? '+' : '') + this.fmtPct(upside);
+        upsideEl.style.color = upside > 0 ? '#16a34a' : '#dc2626';
+
+        // Assumptions summary
+        this.setText('a3_ps',  this.fmtX(ps));
+        this.setText('a3_rr',  this.fmtPct(rr));
+        this.setText('a3_pr',  this.fmtPct(pr));
+        this.setText('a3_fmc', this.fmtMoney(futureMC));
+
+        // 텔레그램 전송 (설정된 경우)
+        Utils.sendToTelegram(Utils.buildDamodaranMsg({
+            companyName: this.num('a3_companyName') || document.getElementById('app-content').querySelector('#a3_companyName').value,
+            marketCap, currentRevenue, ke, rf: this.num('a3_rf'), erp: this.num('a3_erp'),
+            beta, g: this.num('a3_stableGrowth'), margin: this.num('a3_targetMargin'),
+            roe: this.num('a3_targetROE'), years, expectedCAGR,
+            breakevenRev, reqCAGR, mult, impliedCurrentMC, upside
+        }));
+    }
+};
+
+// ============================================================
+// ROUTER
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    const selScreen  = document.getElementById('selection-screen');
+    const appWrapper = document.getElementById('app-wrapper');
+    const appContent = document.getElementById('app-content');
+
+    const loadApp = (appName) => {
+        selScreen.classList.add('hidden');
+        appWrapper.classList.remove('hidden');
+        const tmpl = document.getElementById(appName + '-template');
+        if (!tmpl) return;
+        appContent.innerHTML = tmpl.innerHTML;
+        if (appName === 'app1') App1.init();
+        else if (appName === 'app2') App2.init();
+        else if (appName === 'app3') App3.init();
+    };
+
+    const showSelection = () => {
+        appWrapper.classList.add('hidden');
+        selScreen.classList.remove('hidden');
+        appContent.innerHTML = '';
+    };
+
+    document.getElementById('select-app1').addEventListener('click', () => loadApp('app1'));
+    document.getElementById('select-app2').addEventListener('click', () => loadApp('app2'));
+    document.getElementById('select-app3').addEventListener('click', () => loadApp('app3'));
+    document.getElementById('back-to-selection').addEventListener('click', showSelection);
+
+    // ── 텔레그램 설정 모달 ──────────────────────────────
+    const tgModal    = document.getElementById('tg-modal');
+    const tgDot      = document.getElementById('tg-status-dot');
+
+    const updateDot = () => {
+        const cfg = Utils.getTelegramConfig();
+        tgDot.style.background = (cfg.enabled && cfg.token && cfg.chatId) ? '#22c55e' : '#cbd5e1';
+    };
+    updateDot();
+
+    document.getElementById('tg-settings-btn').addEventListener('click', () => {
+        const cfg = Utils.getTelegramConfig();
+        document.getElementById('tg-token').value  = cfg.token  || '';
+        document.getElementById('tg-chatid').value = cfg.chatId || '';
+        document.getElementById('tg-enabled').checked = !!cfg.enabled;
+        document.getElementById('tg-test-result').classList.add('hidden');
+        tgModal.classList.remove('hidden');
+    });
+    document.getElementById('tg-modal-close').addEventListener('click', () => tgModal.classList.add('hidden'));
+    tgModal.addEventListener('click', (e) => { if (e.target === tgModal) tgModal.classList.add('hidden'); });
+
+    document.getElementById('tg-save-btn').addEventListener('click', () => {
+        Utils.saveToStorage('tg_config', {
+            token:   document.getElementById('tg-token').value.trim(),
+            chatId:  document.getElementById('tg-chatid').value.trim(),
+            enabled: document.getElementById('tg-enabled').checked
+        });
+        updateDot();
+        tgModal.classList.add('hidden');
+    });
+
+    document.getElementById('tg-test-btn').addEventListener('click', async () => {
+        const token  = document.getElementById('tg-token').value.trim();
+        const chatId = document.getElementById('tg-chatid').value.trim();
+        const resultEl = document.getElementById('tg-test-result');
+        if (!token || !chatId) {
+            resultEl.textContent = '⚠️ Bot Token과 Chat ID를 모두 입력하세요.';
+            resultEl.style.cssText = 'background:#fef2f2;color:#dc2626;border:1px solid #fecaca;';
+            resultEl.classList.remove('hidden'); return;
+        }
+        resultEl.textContent = '전송 중...';
+        resultEl.style.cssText = 'background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;';
+        resultEl.classList.remove('hidden');
+        try {
+            const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, text: '✅ 통합 가치평가 모델과 텔레그램 연동이 완료되었습니다!\n\n계산 실행 시 결과가 자동으로 전송됩니다.', parse_mode: 'HTML' })
+            });
+            if (res.ok) {
+                resultEl.textContent = '✅ 전송 성공! 텔레그램을 확인하세요.';
+                resultEl.style.cssText = 'background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;';
+            } else {
+                const err = await res.json();
+                resultEl.textContent = `❌ 오류: ${err.description || '알 수 없는 오류'}`;
+                resultEl.style.cssText = 'background:#fef2f2;color:#dc2626;border:1px solid #fecaca;';
+            }
+        } catch (e) {
+            resultEl.textContent = `❌ 네트워크 오류: ${e.message}`;
+            resultEl.style.cssText = 'background:#fef2f2;color:#dc2626;border:1px solid #fecaca;';
+        }
+    });
+});
+
+// ── 인쇄/저장 시 입력값 전체를 텍스트로 출력 ──────────────────────────────
+(function () {
+    const fmt  = (v, d=0) => (v==null||v===''||isNaN(v)) ? '–' : Number(v).toLocaleString('ko-KR',{minimumFractionDigits:d,maximumFractionDigits:d});
+    const pct  = (v)      => (v!=null&&v!==''&&!isNaN(v)) ? Number(v).toFixed(1)+'%' : '–';
+    const ts   = ()       => new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'});
+    const val  = (id)     => { const el=document.getElementById('app-content')?.querySelector('#'+id); return el?el.value:''; };
+    const checked     = (name) => { const el=document.getElementById('app-content')?.querySelector(`input[name="${name}"]:checked`); return el?el.value:''; };
+    const checkedLabel= (name) => { const el=document.getElementById('app-content')?.querySelector(`input[name="${name}"]:checked`); if(!el) return '–'; const lbl=el.closest('label'); return lbl?lbl.textContent.trim():el.value; };
+    const selText     = (id)   => { const el=document.getElementById('app-content')?.querySelector('#'+id); return (el&&el.options[el.selectedIndex])?el.options[el.selectedIndex].text:'–'; };
+
+    function buildApp1Text() {
+        const mode    = checked('analysis_mode');
+        const company = val('companyName')||'(기업명 없음)';
+        const unit    = getCurrencyCfg().unitLabel;
+        const priceU  = getCurrencyCfg().priceUnit;
+        const L = [];
+        L.push(`${company}  ${ts()}`);
+        if (mode==='temperature_check') { L.push(`분석 모드: 주가 온도 (역산)`); L.push(`현재 주가: ${fmt(val('targetPrice'))} ${priceU}`); }
+        else                            { L.push(`분석 모드: 가치 평가`); }
+        L.push(`통화 단위: ${unit}`);
+        L.push(`모델 유형: ${checkedLabel('valuation_model')}`);
+        L.push(`━━━━━━━━━━━━━━━`);
+        L.push(`[재무 실적 – 기준연도]`);
+        L.push(`  기준 매출액:          ${fmt(val('baseRevenue'))} ${unit}`);
+        L.push(`  기준 영업이익(EBIT):   ${fmt(val('baseEbit'))} ${unit}`);
+        L.push(`  현재 영업이익률:       ${val('baseMargin')||'–'}%`);
+        L.push(`  영구 성장률(g):        ${pct(val('terminalGrowthRate'))}`);
+        L.push(`━━━━━━━━━━━━━━━`);
+        if (checked('valuation_model')==='high_growth') {
+            L.push(`[고성장 가정]`);
+            if (mode==='temperature') {
+                L.push(`  성장률 범위:   ${pct(val('growthRateStart'))} ~ ${pct(val('growthRateEnd'))}  (step ${pct(val('growthRateStep'))})`);
+                L.push(`  이익률 범위:   ${pct(val('marginRateStart'))} ~ ${pct(val('marginRateEnd'))}  (step ${pct(val('marginRateStep'))})`);
+            } else {
+                L.push(`  초기 고성장률:   ${pct(val('highGrowthRate'))}`);
+                L.push(`  목표 영업이익률: ${pct(val('targetMargin'))}`);
+            }
+            L.push(`  고성장 기간:     ${val('growthPeriod')}년`);
+            L.push(`  이익률 도달:     ${checkedLabel('margin_period')}`);
+            L.push(`━━━━━━━━━━━━━━━`);
+        }
+        L.push(`[할인율 및 재투자]`);
+        L.push(`  고성장기 WACC: ${pct(val('highGrowthWacc'))}`);
+        L.push(`  영속기 WACC:   ${pct(val('terminalWacc'))}`);
+        if (checked('reinvestment_method')==='sc_ratio') {
+            L.push(`  재투자 방식:   S/C Ratio`);
+            L.push(`  산업군:        ${selText('industry')}`);
+            L.push(`  S/C Ratio:     ${val('salesToCapital')}`);
+        } else {
+            L.push(`  재투자 방식:   재투자율 (ROI)`);
+            L.push(`  재투자율:      ${pct(val('reinvestmentRate'))}`);
+        }
+        L.push(`━━━━━━━━━━━━━━━`);
+        L.push(`[자산 및 부채]`);
+        L.push(`  이자발생부채:          ${fmt(val('interestBearingDebt'))} ${unit}`);
+        L.push(`  현금 및 현금성자산:    ${fmt(val('cashAndEquivalents'))} ${unit}`);
+        L.push(`  비영업자산:            ${fmt(val('nonOperatingAssets'))} ${unit}  (반영비율 ${val('nonOpAssetReflectionRate')}%)`);
+        L.push(`  발행주식 총수:         ${fmt(val('outstandingShares'))} 주`);
+        if (window._lastPrintMsg) {
+            const plain = window._lastPrintMsg.replace(/<[^>]+>/g,'');
+            L.push(`━━━━━━━━━━━━━━━`);
+            L.push(`[계산 결과]`);
+            plain.split('\n').slice(3).forEach(l=>L.push(l));
+        }
+        return L.join('\n');
+    }
+
+    function buildApp2Text() {
+        const c      = document.getElementById('app-content');
+        const method = checked('assumption_method');
+        const unit   = getCurrencyCfg().unitLabel;
+        const L = [];
+        L.push(`${val('companyName')||'(기업명 없음)'}  ${ts()}`);
+        L.push(`분석 모드: SOTP (부문별 가치합산)`);
+        L.push(`통화 단위: ${unit}`);
+        L.push(`모델 유형: ${checkedLabel('valuation_model')}`);
+        L.push(`━━━━━━━━━━━━━━━`);
+        L.push(`[전사 실적 – 기준연도]`);
+        L.push(`  기준 매출액:    ${fmt(val('baseRevenue'))} ${unit}`);
+        L.push(`  기준 영업이익:  ${fmt(val('baseOperatingIncome'))} ${unit}`);
+        L.push(`  영구 성장률(g): ${pct(val('terminalGrowthRate'))}`);
+        L.push(`━━━━━━━━━━━━━━━`);
+        if (method==='segment') {
+            L.push(`[부문별 가정]`);
+            c?.querySelectorAll('.segment-block').forEach((el,i)=>{
+                const name=el.querySelector('.segment-name')?.value||`부문${i+1}`;
+                const rev =el.querySelector('.segment-baseRevenue')?.value||'–';
+                const bm  =el.querySelector('.segment-baseMargin')?.value||'–';
+                const gr  =el.querySelector('.segment-highGrowthRate')?.value||el.querySelector('.segment-cagr')?.value||'–';
+                const tm  =el.querySelector('.segment-targetMargin')?.value||'–';
+                L.push(`  [${name}]  기준매출 ${fmt(rev)}억  기준이익률 ${bm}%  성장률 ${gr}%  목표이익률 ${tm}%`);
+            });
+        } else {
+            L.push(`[성장 가정]`);
+            L.push(`  초기 고성장률:   ${pct(val('highGrowthRate_std'))}`);
+            L.push(`  목표 영업이익률: ${pct(val('targetMargin_std'))}`);
+        }
+        L.push(`  고성장 기간:  ${val('growthPeriod')}년`);
+        L.push(`  이익률 도달:  ${checkedLabel('margin_period')}`);
+        L.push(`━━━━━━━━━━━━━━━`);
+        L.push(`[할인율 및 재투자]`);
+        L.push(`  고성장기 WACC: ${pct(val('highGrowthWacc'))}`);
+        L.push(`  영속기 WACC:   ${pct(val('terminalWacc'))}`);
+        if (checked('reinvestment_method')==='sc_ratio') {
+            L.push(`  재투자 방식:   S/C Ratio  (${selText('industry')}  ${val('salesToCapital')}x)`);
+        } else {
+            L.push(`  재투자 방식:   재투자율 ${pct(val('reinvestmentRate'))}`);
+        }
+        L.push(`━━━━━━━━━━━━━━━`);
+        L.push(`[자산 및 부채]`);
+        L.push(`  이자발생부채:       ${fmt(val('interestBearingDebt'))} ${unit}`);
+        L.push(`  현금 및 현금성자산: ${fmt(val('cashAndEquivalents'))} ${unit}`);
+        L.push(`  비영업자산:         ${fmt(val('nonOperatingAssets'))} ${unit}  (반영비율 ${val('nonOpAssetReflectionRate')}%)`);
+        L.push(`  발행주식 총수:      ${fmt(val('outstandingShares'))} 주`);
+        if (window._lastPrintMsg) {
+            const plain = window._lastPrintMsg.replace(/<[^>]+>/g,'');
+            L.push(`━━━━━━━━━━━━━━━`);
+            L.push(`[계산 결과]`);
+            plain.split('\n').slice(3).forEach(l=>L.push(l));
+        }
+        return L.join('\n');
+    }
+
+    function buildApp3Text() {
+        const L = [];
+        const company = document.getElementById('app-content')?.querySelector('#a3_companyName')?.value||'(기업명 없음)';
+        const unit3 = getCurrencyCfg().unitLabel;
+        L.push(`${company}  ${ts()}`);
+        L.push(`분석 모드: Damodaran Breakeven (역산)`);
+        L.push(`통화 단위: ${unit3}`);
+        L.push(`━━━━━━━━━━━━━━━`);
+        L.push(`[시장 데이터]`);
+        L.push(`  현재 시가총액:  ${fmt(val('a3_marketCap'))} ${unit3}`);
+        L.push(`  현재 매출액:    ${fmt(val('a3_currentRevenue'))} ${unit3}`);
+        L.push(`━━━━━━━━━━━━━━━`);
+        L.push(`[자본비용 (CAPM)]`);
+        L.push(`  무위험수익률(Rf):      ${pct(val('a3_rf'))}`);
+        L.push(`  시장위험프리미엄(ERP): ${pct(val('a3_erp'))}`);
+        L.push(`  베타(β):              ${val('a3_beta')}`);
+        L.push(`  배당/현금수익률:       ${pct(val('a3_cashYield'))}`);
+        L.push(`━━━━━━━━━━━━━━━`);
+        L.push(`[터미널 가정]`);
+        L.push(`  영구 성장률(g):  ${pct(val('a3_stableGrowth'))}`);
+        L.push(`  목표 영업이익률: ${pct(val('a3_targetMargin'))}`);
+        L.push(`  목표 ROE:        ${pct(val('a3_targetROE'))}`);
+        L.push(`  성장 기간:       ${val('a3_years')}년`);
+        L.push(`  예상 매출 CAGR:  ${pct(val('a3_expectedCAGR'))}`);
+        if (window._lastPrintMsg) {
+            const plain = window._lastPrintMsg.replace(/<[^>]+>/g,'');
+            L.push(`━━━━━━━━━━━━━━━`);
+            L.push(`[계산 결과]`);
+            plain.split('\n').slice(3).forEach(l=>L.push(l));
+        }
+        return L.join('\n');
+    }
+
+    function detectApp() {
+        const c = document.getElementById('app-content');
+        if (!c||!c.innerHTML.trim()) return null;
+        if (c.querySelector('#a3_marketCap'))                                              return 'app3';
+        if (c.querySelector('#highGrowthRate_std')||c.querySelector('[name="assumption_method"]')) return 'app2';
+        if (c.querySelector('#companyName'))                                               return 'app1';
+        return null;
+    }
+
+    window._buildPrintText = () => {
+        const app = detectApp();
+        if (app==='app1') return buildApp1Text();
+        if (app==='app2') return buildApp2Text();
+        if (app==='app3') return buildApp3Text();
+        return '앱이 로드되지 않았습니다.';
+    };
+
+    // ── html2canvas 저장 버튼 → 입력폼만 텍스트로 교체, 결과/차트는 원본 유지 ──
+    const textSaveAsPng = function () {
+        const c      = this.content ? this.content() : document.getElementById('app-content');
+        const target = c.querySelector('#printable-area');
+        if (!target) return;
+
+        const now     = new Date();
+        const dtStr   = now.getFullYear().toString()
+                      + String(now.getMonth()+1).padStart(2,'0')
+                      + String(now.getDate()).padStart(2,'0')
+                      + '_'
+                      + String(now.getHours()).padStart(2,'0')
+                      + String(now.getMinutes()).padStart(2,'0');
+        const company = val('companyName') || val('a3_companyName') || 'valuation';
+        const modeRaw = checked('analysis_mode');
+        const modeLabel = modeRaw === 'temperature_check' ? '주가온도' : modeRaw === 'valuation' ? '가치평가' : 'SOTP';
+        const app = detectApp();
+        const appLabel = app === 'app3' ? 'Damodaran' : app === 'app2' ? 'SOTP' : modeLabel;
+        const fname   = company.replace(/\s+/g,'_') + '_' + appLabel + '_' + dtStr + '.png';
+
+        // 입력폼 영역만 텍스트로 교체
+        const dcfForm = target.querySelector('#dcf-form');
+        if (!dcfForm) { /* 폼 없으면 그냥 캡처 */
+            html2canvas(target, {scale:2, useCORS:true, backgroundColor:'#f8fafc'})
+                .then(canvas => { const a=document.createElement('a'); a.download=fname; a.href=canvas.toDataURL('image/png'); a.click(); a.remove(); });
+            return;
+        }
+
+        // 입력 텍스트 생성 (결과 제외 - 결과는 UI로 표시되므로)
+        let inputText;
+        if (app==='app1') inputText = buildApp1Text();
+        else if (app==='app2') inputText = buildApp2Text();
+        else inputText = buildApp3Text();
+        // 계산결과 줄 제거 (UI 결과패널이 담당)
+        const inputOnly = inputText.split('\n').filter(l=>!l.startsWith('[계산 결과]')).join('\n').replace(/━+\s*$/, '').trimEnd();
+
+        const textDiv = document.createElement('div');
+        textDiv.style.cssText = 'font-family:Pretendard,monospace,sans-serif;font-size:12px;line-height:1.85;color:#0f172a;white-space:pre-wrap;padding:4px 0;';
+        textDiv.textContent = inputOnly;
+
+        // 폼 숨기고 텍스트로 교체
+        dcfForm.style.display = 'none';
+        dcfForm.parentNode.insertBefore(textDiv, dcfForm);
+
+        // 저장 버튼 행 숨김
+        const calcBtn = c.querySelector('#calculate-btn');
+        const btnRow  = calcBtn ? calcBtn.closest('div.flex') : null;
+        if (btnRow) btnRow.style.display = 'none';
+
+        if (this.valuationChartInstance)   { this.valuationChartInstance.options.animation   = false; this.valuationChartInstance.update(); }
+        if (this.temperatureChartInstance) { this.temperatureChartInstance.options.animation = false; this.temperatureChartInstance.update(); }
+
+        // ── 가로 잘림 방지: 스크롤 컨테이너 너비를 실제 콘텐츠 너비로 확장 ──
+        // 1) overflow 제거
+        const overflowEls = Array.from(target.querySelectorAll('[class*="overflow-x"], [style*="overflow"]'));
+        const origOverflow = overflowEls.map(el => ({ el, ov: el.style.overflow, w: el.style.width, minW: el.style.minWidth }));
+        overflowEls.forEach(el => { el.style.overflow = 'visible'; });
+
+        // 2) 테이블 컨테이너를 scrollWidth 기준으로 확장
+        const tableCont = target.querySelector('#sensitivity-table-container') || target.querySelector('.overflow-x-auto');
+        const origContW = tableCont ? tableCont.style.width : null;
+        if (tableCont) {
+            const fullW = tableCont.scrollWidth;
+            tableCont.style.overflow = 'visible';
+            tableCont.style.width = fullW + 'px';
+        }
+
+        // 3) printable-area 자체도 테이블 너비에 맞게 확장
+        const origTargetW = target.style.width;
+        const captureW = Math.max(target.scrollWidth, tableCont ? tableCont.scrollWidth : 0);
+        target.style.width = captureW + 'px';
+
+        html2canvas(target, {
+            scale: 2, useCORS: true, backgroundColor: '#f8fafc',
+            width: captureW,
+            windowWidth: captureW + 40
+        })
+            .then(canvas => {
+                const a = document.createElement('a');
+                a.download = fname; a.href = canvas.toDataURL('image/png'); a.click(); a.remove();
+            })
+            .catch(err => console.error('PNG 저장 실패:', err))
+            .finally(() => {
+                textDiv.remove();
+                dcfForm.style.display = '';
+                if (btnRow) btnRow.style.display = '';
+                // 너비/overflow 복원
+                origOverflow.forEach(({el, ov, w, minW}) => { el.style.overflow = ov; el.style.width = w; el.style.minWidth = minW; });
+                if (tableCont) tableCont.style.width = origContW;
+                target.style.width = origTargetW;
+                if (this.valuationChartInstance)   { this.valuationChartInstance.options.animation = {}; this.valuationChartInstance.update(); }
+                if (this.temperatureChartInstance) { this.temperatureChartInstance.options.animation = {}; this.temperatureChartInstance.update(); }
+            });
+    };
+
+    App1.handleSaveAsPng = textSaveAsPng;
+    App2.handleSaveAsPng = textSaveAsPng;
+
+    // ── 텔레그램 전송 시 마지막 메시지 저장 ──
+    const _origSend = Utils.sendToTelegram.bind(Utils);
+    Utils.sendToTelegram = function(text) { window._lastPrintMsg = text; return _origSend(text); };
+
+    // ── window.print() (App3 버튼) 도 텍스트로 ──
+    let _savedHTML = null;
+    window.addEventListener('beforeprint', () => {
+        const appContent = document.getElementById('app-content');
+        if (!appContent) return;
+        _savedHTML = appContent.innerHTML;
+        const text = window._buildPrintText();
+        appContent.innerHTML = `<pre style="font-family:Pretendard,monospace,sans-serif;font-size:13px;line-height:2;color:#0f172a;white-space:pre-wrap;padding:8px 0;">${text}</pre>`;
+    });
+    window.addEventListener('afterprint', () => {
+        const appContent = document.getElementById('app-content');
+        if (appContent && _savedHTML!==null) {
+            appContent.innerHTML = _savedHTML;
+            _savedHTML = null;
+            const app = detectApp();
+            if (app==='app1') App1.init();
+            else if (app==='app2') App2.init();
+            else if (app==='app3') App3.init();
+        }
+    });
+})();
+
+</script>
+</body>
+</html>
